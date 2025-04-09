@@ -30,7 +30,7 @@ function App() {
 
           <footer className="bg-white border-t py-4 mt-auto">
             <div className="container mx-auto text-center text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} - {/* @ts-ignore */}{t('general.appName')}
+              &copy; {new Date().getFullYear()} - {}{t('general.appName')} by <a href="https://ziadlahrouni.com" target="_blank">Ziad Lahrouni (ziadlahrouni.com)</a>
             </div>
           </footer>
         </div>
