@@ -1,0 +1,82 @@
+{
+  "general": {
+    "appName": "Retrospective Platform",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "cancel": "Cancel",
+    "backToHome": "Back to home"
+  },
+  "home": {
+    "title": "Retrospective Platform",
+    "createSession": "Create a retrospective session",
+    "createSessionDescription": "Start a new retrospective and invite your team to collaborate in real-time.",
+    "joinSession": "Join a session",
+    "sessionCodePlaceholder": "Enter session code or ID",
+    "joinButton": "Join",
+    "sessionNotFound": "Session not found. Please check the code and try again.",
+    "errorJoiningSession": "Error joining session. Please try again."
+  },
+  "navigation": {
+    "home": "Home",
+    "newSession": "New Session",
+    "openMenu": "Open Menu",
+    "closeMenu": "Close Menu"
+  },
+  "createSession": {
+    "title": "New Retrospective",
+    "activityType": "Choose an activity type",
+    "enterName": "Your name (optional)",
+    "namePlaceholder": "Enter your name",
+    "createButton": "Create session"
+  },
+  "activities": {
+    "types": {
+      "startStopContinue": "Start / Stop / Continue",
+      "madSadGlad": "Mad / Sad / Glad",
+      "whatWentWell": "What Went Well / To Improve",
+      "likedLearnedLacked": "Liked / Learned / Lacked",
+      "4Ls": "Liked / Learned / Lacked / Longed for"
+    },
+    "columns": {
+      "startStopContinue": {
+        "start": "Start",
+        "stop": "Stop",
+        "continue": "Continue"
+      },
+      "madSadGlad": {
+        "mad": "Mad",
+        "sad": "Sad",
+        "glad": "Glad"
+      },
+      "whatWentWell": {
+        "wentWell": "What Went Well",
+        "toImprove": "To Improve"
+      },
+      "likedLearnedLacked": {
+        "liked": "Liked",
+        "learned": "Learned",
+        "lacked": "Lacked"
+      },
+      "4Ls": {
+        "liked": "Liked",
+        "learned": "Learned",
+        "lacked": "Lacked",
+        "longedFor": "Longed For"
+      }
+    }
+  },
+  "session": {
+    "addCard": "Add a card",
+    "cardPlaceholder": "Enter your comment here",
+    "closeSession": "Close session",
+    "confirmClose": "Are you sure you want to close this session? No new cards can be added once it's closed.",
+    "sessionClosed": "This session is closed",
+    "shareLink": "Share session link",
+    "copied": "Link copied!",
+    "yourName": "Your name",
+    "anonymous": "Anonymous",
+    "submit": "Submit",
+    "noCards": "No cards yet",
+    "notFound": "Session not found or has been deleted"
+  }
+}

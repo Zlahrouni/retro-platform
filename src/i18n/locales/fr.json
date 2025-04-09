@@ -1,0 +1,82 @@
+{
+  "general": {
+    "appName": "Plateforme de Rétrospective",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "cancel": "Annuler",
+    "backToHome": "Retour à l'accueil"
+  },
+  "home": {
+    "title": "Plateforme de Rétrospective",
+    "createSession": "Créer une session de rétrospective",
+    "createSessionDescription": "Démarrez une nouvelle rétrospective et invitez votre équipe à collaborer en temps réel.",
+    "joinSession": "Rejoindre une session",
+    "sessionCodePlaceholder": "Entrez le code ou l'ID de la session",
+    "joinButton": "Rejoindre",
+    "sessionNotFound": "Session non trouvée. Veuillez vérifier le code et réessayer.",
+    "errorJoiningSession": "Erreur lors de la connexion à la session. Veuillez réessayer."
+  },
+  "navigation": {
+    "home": "Accueil",
+    "newSession": "Nouvelle Session",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu"
+  },
+  "createSession": {
+    "title": "Nouvelle Rétrospective",
+    "activityType": "Choisissez un type d'activité",
+    "enterName": "Votre nom (optionnel)",
+    "namePlaceholder": "Entrez votre nom",
+    "createButton": "Créer la session"
+  },
+  "activities": {
+    "types": {
+      "startStopContinue": "Démarrer / Arrêter / Continuer",
+      "madSadGlad": "Énervé / Triste / Content",
+      "whatWentWell": "Ce qui a bien fonctionné / À améliorer",
+      "likedLearnedLacked": "Aimé / Appris / Manqué",
+      "4Ls": "Aimé / Appris / Manqué / Souhaité"
+    },
+    "columns": {
+      "startStopContinue": {
+        "start": "À démarrer",
+        "stop": "À arrêter",
+        "continue": "À continuer"
+      },
+      "madSadGlad": {
+        "mad": "Énervé",
+        "sad": "Triste",
+        "glad": "Content"
+      },
+      "whatWentWell": {
+        "wentWell": "Ce qui a bien fonctionné",
+        "toImprove": "À améliorer"
+      },
+      "likedLearnedLacked": {
+        "liked": "Aimé",
+        "learned": "Appris",
+        "lacked": "Manqué"
+      },
+      "4Ls": {
+        "liked": "Aimé",
+        "learned": "Appris",
+        "lacked": "Manqué",
+        "longedFor": "Souhaité"
+      }
+    }
+  },
+  "session": {
+    "addCard": "Ajouter une carte",
+    "cardPlaceholder": "Entrez votre commentaire ici",
+    "closeSession": "Fermer la session",
+    "confirmClose": "Êtes-vous sûr de vouloir fermer cette session ? Aucune nouvelle carte ne pourra être ajoutée une fois fermée.",
+    "sessionClosed": "Cette session est fermée",
+    "shareLink": "Partager le lien de la session",
+    "copied": "Lien copié !",
+    "yourName": "Votre nom",
+    "anonymous": "Anonyme",
+    "submit": "Soumettre",
+    "noCards": "Aucune carte pour le moment",
+    "notFound": "Session non trouvée ou supprimée"
+  }
+}
