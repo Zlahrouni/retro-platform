@@ -25,7 +25,7 @@
   "createSession": {
     "title": "Nouvelle Rétrospective",
     "activityType": "Choisissez un type d'activité",
-    "enterName": "Votre nom (optionnel)",
+    "enterName": "Votre nom",
     "namePlaceholder": "Entrez votre nom",
     "createButton": "Créer la session"
   },
@@ -78,5 +78,14 @@
     "submit": "Soumettre",
     "noCards": "Aucune carte pour le moment",
     "notFound": "Session non trouvée ou supprimée"
+  },
+  "user": {
+    "enterYourName": "Entrez votre nom",
+    "displayName": "Nom d'affichage",
+    "namePlaceholder": "Comment souhaitez-vous être identifié ?",
+    "nameRequired": "Le nom est obligatoire pour continuer",
+    "continue": "Continuer",
+    "welcomeBack": "Bienvenue, {name} !",
+    "changeUsername": "Changer de nom"
   }
 }

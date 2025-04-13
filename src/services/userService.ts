@@ -39,10 +39,21 @@ export const userService = {
 
     // Obtenir ou définir le nom d'utilisateur local (pour les utilisateurs qui ne veulent pas s'authentifier)
     getUserName(): string {
-        return localStorage.getItem('userName') || 'Anonyme';
+        return localStorage.getItem('userName') || '';
     },
 
     setUserName(name: string): void {
         localStorage.setItem('userName', name);
+    },
+
+    // Vérifier si l'utilisateur a déjà défini un nom
+    hasUserName(): boolean {
+        const name = localStorage.getItem('userName');
+        return !!name && name.trim() !== '';
+    },
+
+    // Effacer le nom d'utilisateur
+    clearUserName(): void {
+        localStorage.removeItem('userName');
     }
 };

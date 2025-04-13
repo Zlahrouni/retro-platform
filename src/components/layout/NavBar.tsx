@@ -3,10 +3,13 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../Comons/LanguageSwitcher';
+import { userService } from '../../services/userService';
+import UserNameModal from '../user/UserNameModal';
 
 const NavBar: React.FC = () => {
     const { t } = useTranslation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [showUserModal, setShowUserModal] = useState(false);
     const location = useLocation();
 
     const toggleMenu = () => {
@@ -22,8 +25,18 @@ const NavBar: React.FC = () => {
         return location.pathname === path;
     };
 
+    const handleUserNameComplete = () => {
+        setShowUserModal(false);
+    };
+
     return (
         <nav className="bg-white shadow-sm">
+            {showUserModal && (
+                <UserNameModal
+                    onComplete={handleUserNameComplete}
+                />
+            )}
+
             <div className="container mx-auto px-4">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo & Title */}
@@ -57,12 +70,27 @@ const NavBar: React.FC = () => {
                             >
                                 {t('navigation.newSession')}
                             </Link>
+
+                            {/* Afficher le nom d'utilisateur s'il est défini, mais sans possibilité de cliquer si dans une session */}
+                            {userService.hasUserName() && (
+                                <div className="ml-2 py-1 px-3 bg-gray-100 rounded-full text-sm text-gray-700 flex items-center">
+                                    <span className="mr-1">👤</span>
+                                    {userService.getUserName()}
+                                </div>
+                            )}
                         </div>
                         <LanguageSwitcher />
                     </div>
 
                     {/* Mobile menu button */}
                     <div className="md:hidden flex items-center">
+                        {/* Afficher le nom d'utilisateur sur mobile s'il est défini, sans possibilité de changement */}
+                        {userService.hasUserName() && (
+                            <div className="mr-2 py-1 px-2 bg-gray-100 rounded-full text-xs text-gray-700">
+                                👤
+                            </div>
+                        )}
+
                         <LanguageSwitcher />
                         <button
                             onClick={toggleMenu}
@@ -128,6 +156,8 @@ const NavBar: React.FC = () => {
                     >
                         Nouvelle Session
                     </Link>
+
+                    {/* Nous ne permettons plus le changement de nom pendant une session active */}
                 </div>
             </div>
         </nav>

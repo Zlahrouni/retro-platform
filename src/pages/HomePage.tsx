@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { sessionsService } from '../services/firebaseService';
+import { userService } from '../services/userService';
+import UserNameModal from '../components/user/UserNameModal';
+import HomeBottomSection from '../components/home/HomeBottomSection';
 
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
@@ -12,6 +15,8 @@ const HomePage: React.FC = () => {
     const [isJoining, setIsJoining] = useState(false);
     const [joinError, setJoinError] = useState<string | null>(null);
     const [isShaking, setIsShaking] = useState(false);
+    const [showUsernameModal, setShowUsernameModal] = useState(false);
+    const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
 
     // Effet pour gérer l'animation de secousse
     useEffect(() => {
@@ -34,6 +39,14 @@ const HomePage: React.FC = () => {
             const session = await sessionsService.getSessionById(sessionCode.trim());
 
             if (session) {
+                // Si l'utilisateur n'a pas encore défini de nom, on lui demande
+                if (!userService.hasUserName()) {
+                    setPendingSessionId(session.id);
+                    setShowUsernameModal(true);
+                    setIsJoining(false);
+                    return;
+                }
+
                 navigate(`/session/${session.id}`);
                 return;
             }
@@ -42,6 +55,14 @@ const HomePage: React.FC = () => {
             const sessionByCode = await sessionsService.getSessionByCode(sessionCode.trim());
 
             if (sessionByCode) {
+                // Si l'utilisateur n'a pas encore défini de nom, on lui demande
+                if (!userService.hasUserName()) {
+                    setPendingSessionId(sessionByCode.id);
+                    setShowUsernameModal(true);
+                    setIsJoining(false);
+                    return;
+                }
+
                 navigate(`/session/${sessionByCode.id}`);
                 return;
             }
@@ -58,8 +79,38 @@ const HomePage: React.FC = () => {
         }
     };
 
+    const handleCreateClick = () => {
+        // Naviguer directement vers la page de création qui gère elle-même le formulaire
+        navigate('/create');
+    };
+
+    const handleUsernameComplete = () => {
+        setShowUsernameModal(false);
+
+        // Si nous avons un ID de session en attente, naviguer vers cette session
+        if (pendingSessionId) {
+            navigate(`/session/${pendingSessionId}`);
+            setPendingSessionId(null);
+        } else {
+            // Sinon, naviguer vers la page de création
+            navigate('/create');
+        }
+    };
+
     return (
         <div className="max-w-4xl mx-auto mt-12 px-4">
+            {/* Username Modal */}
+            {showUsernameModal && (
+                <UserNameModal
+                    onComplete={handleUsernameComplete}
+                    onCancel={() => {
+                        setShowUsernameModal(false);
+                        setPendingSessionId(null);
+                    }}
+                    showCancelButton={true}
+                />
+            )}
+
             {/* Hero Section */}
             <div className="text-center mb-16">
                 <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800 leading-tight">
@@ -94,14 +145,14 @@ const HomePage: React.FC = () => {
                         <p className="mb-8 text-gray-600 leading-relaxed">
                             {t('home.createSessionDescription')}
                         </p>
-                        <Link
-                            to="/create"
+                        <button
+                            onClick={handleCreateClick}
                             className={`w-full block text-center bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 ${
                                 isHoveringCreate ? 'bg-blue-700 shadow-md' : ''
                             }`}
                         >
                             {t('home.createSession')}
-                        </Link>
+                        </button>
                     </div>
                 </div>
 
@@ -169,38 +220,8 @@ const HomePage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Bottom Section */}
-            <div className="mt-16 text-center">
-                <p className="text-gray-500 text-sm">
-                    Plateforme simple et intuitive pour des rétrospectives efficaces
-                </p>
-                <div className="flex justify-center space-x-10 mt-6">
-                    <div className="flex flex-col items-center">
-                        <div className="text-blue-600 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                            </svg>
-                        </div>
-                        <span className="text-sm text-gray-600">Temps réel</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                        <div className="text-blue-600 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-                            </svg>
-                        </div>
-                        <span className="text-sm text-gray-600">Sécurisé</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                        <div className="text-blue-600 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
-                        </div>
-                        <span className="text-sm text-gray-600">Intuitif</span>
-                    </div>
-                </div>
-            </div>
+            {/* Utilisation du composant HomeBottomSection */}
+            <HomeBottomSection />
         </div>
     );
 };

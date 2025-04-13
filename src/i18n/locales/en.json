@@ -25,7 +25,7 @@
   "createSession": {
     "title": "New Retrospective",
     "activityType": "Choose an activity type",
-    "enterName": "Your name (optional)",
+    "enterName": "Your name",
     "namePlaceholder": "Enter your name",
     "createButton": "Create session"
   },
@@ -78,5 +78,14 @@
     "submit": "Submit",
     "noCards": "No cards yet",
     "notFound": "Session not found or has been deleted"
+  },
+  "user": {
+    "enterYourName": "Enter your name",
+    "displayName": "Display name",
+    "namePlaceholder": "How would you like to be identified?",
+    "nameRequired": "Name is required to continue",
+    "continue": "Continue",
+    "welcomeBack": "Welcome back, {name}!",
+    "changeUsername": "Change username"
   }
 }
