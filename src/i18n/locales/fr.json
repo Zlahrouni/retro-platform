@@ -78,7 +78,34 @@
         "lacked": "Manqué",
         "longedFor": "Souhaité"
       }
-    }
+    },
+    "selectType": "Sélectionner un type d'activité",
+    "typeDescription": "Choisissez le type d'activité que vous souhaitez ajouter à cette session.",
+    "iceBreaker": "Ice Breaker",
+    "iceBreakerDescription": "Une activité rapide pour briser la glace et créer un environnement détendu.",
+    "retroActivity": "Activité de rétrospective",
+    "retroDescription": "Analyser et réfléchir sur ce qui a bien/mal fonctionné pendant une période donnée.",
+    "selectIceBreaker": "Sélectionner un Ice Breaker",
+    "iceBreakerSelectionDescription": "Choisissez un type d'Ice Breaker pour votre équipe.",
+    "iceBreakerTypes": {
+      "funQuestion": "Question Fun Express",
+      "funQuestionDescription": "Une question amusante pour que chacun puisse partager quelque chose de personnel."
+    },
+    "selectRetroActivity": "Sélectionner une activité de rétrospective",
+    "retroSelectionDescription": "Choisissez le format de rétrospective qui convient le mieux à votre équipe.",
+    "comingSoon": "Bientôt disponible",
+    "moreOptionsComingSoon": "D'autres options seront disponibles dans les prochaines mises à jour.",
+    "sessionActivities": "Activités de la session",
+    "status": {
+      "pending": "En attente",
+      "active": "En cours",
+      "completed": "Terminée"
+    },
+    "start": "Démarrer",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette activité ?",
+    "addAnotherActivity": "Besoin d'une autre activité pour cette session ?",
+    "noActivitiesStarted": "Aucune activité n'a encore été démarrée"
   },
   "session": {
     "addCard": "Ajouter une carte",
@@ -121,7 +148,10 @@
     "hideParticipants": "Masquer",
     "you": "Vous",
     "addActivity": "Ajouter une activité",
-    "noActivities": "Aucune activité n'a encore été ajoutée à cette session."
+    "addAnotherActivity": "Besoin d'une autre activité pour cette session ?",
+    "noActivities": "Aucune activité n'a encore été ajoutée à cette session.",
+    "noActivitiesYet": "C'est le moment de commencer !",
+    "addFirstActivityHelp": "Ajoutez votre première activité pour démarrer cette session collaborative."
   },
   "participants": {
     "title": "Participants",

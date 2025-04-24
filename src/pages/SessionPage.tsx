@@ -6,6 +6,14 @@ import { useSession } from '../hooks/useSession';
 import { userService } from '../services/userService';
 import SessionControls from '../components/session/SessionControls';
 import ParticipantsList from '../components/session/ParticipantsList';
+import ActivityTypeModal from '../components/activities/ActivityTypeModal';
+import IceBreakerSelectionModal from '../components/activities/IceBreakerSelectionModal';
+import RetroActivitySelectionModal from '../components/activities/RetroActivitySelectionModal';
+import ActivityList, { ActivityItem } from '../components/session/ActivityList';
+import ActivityTimer from '../components/session/ActivityTimer';
+import SessionStatusBanner from '../components/session/SessionStatusBanner';
+import { ActivityType } from '../types/types';
+import EmptyState from "../components/session/EmptyState";
 
 const SessionPage: React.FC = () => {
     const { t } = useTranslation();
@@ -14,6 +22,14 @@ const SessionPage: React.FC = () => {
     const [showShareMessage, setShowShareMessage] = useState(false);
     const [retries, setRetries] = useState(0);
     const maxRetries = 3;
+
+    // Modal states
+    const [showActivityTypeModal, setShowActivityTypeModal] = useState(false);
+    const [showIceBreakerModal, setShowIceBreakerModal] = useState(false);
+    const [showRetroModal, setShowRetroModal] = useState(false);
+
+    // Activities state (temporary, will be replaced with backend integration)
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
 
     // Utiliser notre hook personnalisé
     const {
@@ -69,6 +85,68 @@ const SessionPage: React.FC = () => {
     const handleResumeSession = useCallback(async () => {
         await resumeSession();
     }, [resumeSession]);
+
+    // Nouvelles fonctions pour la gestion des activités
+    const handleAddActivityClick = useCallback(() => {
+        setShowActivityTypeModal(true);
+    }, []);
+
+    const handleSelectIceBreaker = useCallback(() => {
+        setShowActivityTypeModal(false);
+        setShowIceBreakerModal(true);
+    }, []);
+
+    const handleSelectRetro = useCallback(() => {
+        setShowActivityTypeModal(false);
+        setShowRetroModal(true);
+    }, []);
+
+    const handleIceBreakerSelected = useCallback((type: string) => {
+        setShowIceBreakerModal(false);
+        // Add ice breaker to activities (mock implementation)
+        const newActivity: ActivityItem = {
+            id: `ice_${Date.now()}`,
+            type: 'iceBreaker',
+            iceBreakerType: type,
+            status: 'pending',
+            createdAt: new Date()
+        };
+        setActivities(prev => [...prev, newActivity]);
+    }, []);
+
+    const handleRetroActivitySelected = useCallback((type: ActivityType) => {
+        setShowRetroModal(false);
+        // Add retro activity to activities (mock implementation)
+        const newActivity: ActivityItem = {
+            id: `retro_${Date.now()}`,
+            type: type,
+            status: 'pending',
+            createdAt: new Date()
+        };
+        setActivities(prev => [...prev, newActivity]);
+    }, []);
+
+    const handleStartActivity = useCallback((activityId: string) => {
+        // Mock implementation - just change status
+        setActivities(prev =>
+            prev.map(activity =>
+                activity.id === activityId
+                    ? { ...activity, status: 'active' as const }
+                    : activity
+            )
+        );
+    }, []);
+
+    const handleDeleteActivity = useCallback((activityId: string) => {
+        if (window.confirm(t('activities.confirmDelete'))) {
+            // Mock implementation - remove from local state
+            setActivities(prev => prev.filter(activity => activity.id !== activityId));
+        }
+    }, [t]);
+
+    const handleTimerComplete = useCallback(() => {
+        console.log("Timer completed");
+    }, []);
 
     // Fonctions de rendu conditionnelles
     const renderLoading = () => (
@@ -142,8 +220,35 @@ const SessionPage: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Session status banner (if paused or closed) */}
+                {session.status !== 'open' && (
+                    <SessionStatusBanner
+                        status={session.status}
+                        isAdmin={isSessionCreator}
+                    />
+                )}
+
+                {/* Minuteur d'activité (si admin) */}
+                {isSessionCreator && sessionId && (
+                    <ActivityTimer
+                        isAdmin={isSessionCreator}
+                        sessionId={sessionId}
+                        onTimerComplete={handleTimerComplete}
+                    />
+                )}
+
                 {/* Liste des participants */}
                 {sessionId && <ParticipantsList sessionId={sessionId} />}
+
+                {/* Liste des activités (si présentes) */}
+                {activities.length > 0 && (
+                    <ActivityList
+                        activities={activities}
+                        onStartActivity={isSessionCreator ? handleStartActivity : undefined}
+                        onDeleteActivity={isSessionCreator ? handleDeleteActivity : undefined}
+                        isAdmin={isSessionCreator}
+                    />
+                )}
 
                 {/* Message de partage */}
                 {showShareMessage && (
@@ -152,13 +257,36 @@ const SessionPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* Interface simplifiée pour ajouter une activité */}
-                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                    <p className="text-lg text-gray-600 mb-4">{t('session.noActivities')}</p>
-                    <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors">
-                        {t('session.addActivity')}
-                    </button>
-                </div>
+                {/* Interface pour ajouter une activité */}
+                {session.status !== 'closed' && (
+                    <EmptyState
+                        onAddActivity={handleAddActivityClick}
+                        isFirstActivity={activities.length === 0}
+                    />
+                )}
+
+                {/* Modals for activity selection */}
+                {showActivityTypeModal && (
+                    <ActivityTypeModal
+                        onClose={() => setShowActivityTypeModal(false)}
+                        onSelectIceBreaker={handleSelectIceBreaker}
+                        onSelectRetro={handleSelectRetro}
+                    />
+                )}
+
+                {showIceBreakerModal && (
+                    <IceBreakerSelectionModal
+                        onClose={() => setShowIceBreakerModal(false)}
+                        onSelect={handleIceBreakerSelected}
+                    />
+                )}
+
+                {showRetroModal && (
+                    <RetroActivitySelectionModal
+                        onClose={() => setShowRetroModal(false)}
+                        onSelect={handleRetroActivitySelected}
+                    />
+                )}
             </>
         );
     };

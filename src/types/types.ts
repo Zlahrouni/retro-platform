@@ -8,6 +8,10 @@ export type ActivityType =
     | 'likedLearnedLacked'
     | '4Ls';
 
+// Types pour les Ice Breakers
+export type IceBreakerType =
+    | 'funQuestion';
+
 // Types pour les colonnes selon l'activité
 export type ColumnType =
     | 'start' | 'stop' | 'continue'
@@ -17,6 +21,9 @@ export type ColumnType =
 
 // Types pour le statut de session
 export type SessionStatus = 'open' | 'paused' | 'closed';
+
+// Types pour le statut d'activité
+export type ActivityStatus = 'pending' | 'active' | 'completed';
 
 // Interface pour les participants
 export interface Participant {
@@ -37,9 +44,21 @@ export interface Session {
     participants?: Participant[]; // Liste des participants
 }
 
+export interface Activity {
+    id: string;
+    sessionId: string;
+    type: ActivityType | 'iceBreaker';
+    iceBreakerType?: IceBreakerType;
+    status: ActivityStatus;
+    createdAt: Date;
+    startedAt?: Date;
+    completedAt?: Date;
+}
+
 export interface Card {
     id: string;
     sessionId: string;
+    activityId?: string; // Référence à l'activité associée
     text: string;
     author?: string;
     type: ColumnType;

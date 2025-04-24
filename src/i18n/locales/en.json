@@ -78,7 +78,34 @@
         "lacked": "Lacked",
         "longedFor": "Longed For"
       }
-    }
+    },
+    "selectType": "Select Activity Type",
+    "typeDescription": "Choose the type of activity you want to add to this session.",
+    "iceBreaker": "Ice Breaker",
+    "iceBreakerDescription": "A quick activity to break the ice and create a relaxed environment.",
+    "retroActivity": "Retrospective Activity",
+    "retroDescription": "Analyze and reflect on what went well/poorly during a given period.",
+    "selectIceBreaker": "Select an Ice Breaker",
+    "iceBreakerSelectionDescription": "Choose a type of Ice Breaker for your team.",
+    "iceBreakerTypes": {
+      "funQuestion": "Fun Express Question",
+      "funQuestionDescription": "A fun question for everyone to share something personal."
+    },
+    "selectRetroActivity": "Select a Retrospective Activity",
+    "retroSelectionDescription": "Choose the retrospective format that best suits your team.",
+    "comingSoon": "Coming Soon",
+    "moreOptionsComingSoon": "More options will be available in upcoming updates.",
+    "sessionActivities": "Session Activities",
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "completed": "Completed"
+    },
+    "start": "Start",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this activity?",
+    "addAnotherActivity": "Need another activity for this session?",
+    "noActivitiesStarted": "No activities have been started yet"
   },
   "session": {
     "addCard": "Add a card",
@@ -121,7 +148,10 @@
     "hideParticipants": "Hide",
     "you": "You",
     "addActivity": "Add an activity",
-    "noActivities": "No activities have been added to this session yet."
+    "addAnotherActivity": "Need another activity for this session?",
+    "noActivities": "No activities have been added to this session yet.",
+    "noActivitiesYet": "Time to get started!",
+    "addFirstActivityHelp": "Add your first activity to kickstart this collaborative session."
   },
   "participants": {
     "title": "Participants",
