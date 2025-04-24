@@ -2,14 +2,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../Comons/LanguageSwitcher';
-import { userService } from '../../services/userService';
-import UserNameModal from '../user/UserNameModal';
+import LanguageSwitcher from "../commons/LanguageSwitcher";
 
 const NavBar: React.FC = () => {
     const { t } = useTranslation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [showUserModal, setShowUserModal] = useState(false);
     const location = useLocation();
 
     const toggleMenu = () => {
@@ -25,87 +22,70 @@ const NavBar: React.FC = () => {
         return location.pathname === path;
     };
 
-    const handleUserNameComplete = () => {
-        setShowUserModal(false);
-    };
-
     return (
-        <nav className="bg-white shadow-sm">
-            {showUserModal && (
-                <UserNameModal
-                    onComplete={handleUserNameComplete}
-                />
-            )}
-
+        <nav className="bg-white text-gray-800 shadow-md border-b border-gray-200">
             <div className="container mx-auto px-4">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo & Title */}
                     <div className="flex items-center">
-                        <Link to="/" className="flex items-center" onClick={closeMenu}>
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-teal-400 rounded flex items-center justify-center text-white font-bold mr-2">
-                                R
+                        <Link to="/" className="flex items-center group" onClick={closeMenu}>
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3 shadow-sm transition-transform duration-300 group-hover:rotate-12">
+                                <span className="text-xl">R</span>
                             </div>
-                            <h1 className="text-xl font-bold text-gray-800 hidden sm:block">
-                                {t('general.appName')}
-                            </h1>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-800 hidden sm:block">
+                                    {t('general.appName')}
+                                </h1>
+                                <div className="hidden sm:block text-xs text-gray-500">
+                                    Rétrospectives collaboratives
+                                </div>
+                            </div>
                         </Link>
                     </div>
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex md:items-center">
-                        <div className="flex items-center space-x-4 mr-4">
+                        <div className="flex items-center space-x-2 mr-4">
                             <Link
                                 to="/"
-                                className={`py-2 px-3 rounded-md transition-colors ${
-                                    isActive('/') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                className={`py-2 px-4 rounded-full transition-colors ${
+                                    isActive('/')
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
                                 {t('navigation.home')}
                             </Link>
                             <Link
                                 to="/create"
-                                className={`py-2 px-3 rounded-md transition-colors ${
-                                    isActive('/create') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                                className={`py-2 px-4 rounded-full transition-colors ${
+                                    isActive('/create')
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
                                 {t('navigation.newSession')}
                             </Link>
-
-                            {/* Afficher le nom d'utilisateur s'il est défini, mais sans possibilité de cliquer si dans une session */}
-                            {userService.hasUserName() && (
-                                <div className="ml-2 py-1 px-3 bg-gray-100 rounded-full text-sm text-gray-700 flex items-center">
-                                    <span className="mr-1">👤</span>
-                                    {userService.getUserName()}
-                                </div>
-                            )}
                         </div>
                         <LanguageSwitcher />
                     </div>
 
                     {/* Mobile menu button */}
                     <div className="md:hidden flex items-center">
-                        {/* Afficher le nom d'utilisateur sur mobile s'il est défini, sans possibilité de changement */}
-                        {userService.hasUserName() && (
-                            <div className="mr-2 py-1 px-2 bg-gray-100 rounded-full text-xs text-gray-700">
-                                👤
-                            </div>
-                        )}
-
                         <LanguageSwitcher />
                         <button
                             onClick={toggleMenu}
-                            className="ml-3 inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-blue-600 hover:bg-gray-50 focus:outline-none"
+                            className="ml-2 inline-flex items-center justify-center p-2 rounded-full text-gray-600 hover:bg-gray-100 focus:outline-none"
                             aria-expanded={isMenuOpen ? 'true' : 'false'}
                         >
-                            <span className="sr-only">Ouvrir le menu</span>
+                            <span className="sr-only">{t('navigation.openMenu')}</span>
                             {/* Icon when menu is closed */}
                             <svg
-                                className={`${isMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
+                                className={`${isMenuOpen ? 'hidden' : 'block'} h-5 w-5`}
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
-                                aria-hidden="true"
                             >
                                 <path
                                     strokeLinecap="round"
@@ -116,12 +96,11 @@ const NavBar: React.FC = () => {
                             </svg>
                             {/* Icon when menu is open */}
                             <svg
-                                className={`${isMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
+                                className={`${isMenuOpen ? 'block' : 'hidden'} h-5 w-5`}
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
-                                aria-hidden="true"
                             >
                                 <path
                                     strokeLinecap="round"
@@ -137,27 +116,25 @@ const NavBar: React.FC = () => {
 
             {/* Mobile Menu */}
             <div className={`${isMenuOpen ? 'block' : 'hidden'} md:hidden`}>
-                <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
+                <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 bg-gray-50">
                     <Link
                         to="/"
-                        className={`block py-2 px-3 rounded-md ${
-                            isActive('/') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        className={`block py-2 px-3 rounded-lg ${
+                            isActive('/') ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
                         }`}
                         onClick={closeMenu}
                     >
-                        Accueil
+                        {t('navigation.home')}
                     </Link>
                     <Link
                         to="/create"
-                        className={`block py-2 px-3 rounded-md ${
-                            isActive('/create') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        className={`block py-2 px-3 rounded-lg ${
+                            isActive('/create') ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
                         }`}
                         onClick={closeMenu}
                     >
-                        Nouvelle Session
+                        {t('navigation.newSession')}
                     </Link>
-
-                    {/* Nous ne permettons plus le changement de nom pendant une session active */}
                 </div>
             </div>
         </nav>

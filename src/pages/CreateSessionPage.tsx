@@ -16,9 +16,6 @@ const CreateSessionPage: React.FC = () => {
     const [showNameModal, setShowNameModal] = useState(false);
     const [nameError, setNameError] = useState<string | null>(null);
 
-    // Nous n'avons plus besoin de vérifier au chargement,
-    // car le formulaire contient déjà un champ pour le nom
-
     const handleCreateSession = async () => {
         if (!userName.trim()) {
             setNameError(t('user.nameRequired'));

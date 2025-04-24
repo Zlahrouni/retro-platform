@@ -15,12 +15,26 @@ export type ColumnType =
     | 'wentWell' | 'toImprove'
     | 'liked' | 'learned' | 'lacked' | 'longedFor';
 
+// Types pour le statut de session
+export type SessionStatus = 'open' | 'paused' | 'closed';
+
+// Interface pour les participants
+export interface Participant {
+    id: string;
+    username: string;
+    joinedAt: Date | any; // Accepte Date ou Timestamp de Firebase
+    status?: 'online' | 'offline'; // Statut du participant
+}
+
 export interface Session {
     id: string;
     activityType: ActivityType;
-    status: 'open' | 'closed';
+    status: SessionStatus;
     createdBy: string;
     createdAt: Date;
+    duration?: number;
+    endTime?: Date;
+    participants?: Participant[]; // Liste des participants
 }
 
 export interface Card {

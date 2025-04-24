@@ -51,6 +51,7 @@ export const useSession = (sessionId?: string) => {
     const [cards, setCards] = useState<Card[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isSessionCreator, setIsSessionCreator] = useState(false);
     const navigate = useNavigate();
 
     // Utiliser useRef pour suivre si le hook est toujours monté
@@ -69,6 +70,12 @@ export const useSession = (sessionId?: string) => {
 
     useEffect(() => {
         sessionRef.current = session;
+
+        // Vérifier si l'utilisateur actuel est le créateur de la session
+        if (session) {
+            const userName = userService.getUserName();
+            setIsSessionCreator(session.createdBy === userName);
+        }
     }, [session]);
 
     useEffect(() => {
@@ -103,6 +110,11 @@ export const useSession = (sessionId?: string) => {
                 if (initialSession && isMounted.current) {
                     console.log("Session chargée avec succès:", initialSession);
                     setSession(initialSession);
+
+                    // Vérifier si l'utilisateur est le créateur
+                    const userName = userService.getUserName();
+                    setIsSessionCreator(initialSession.createdBy === userName);
+
                     setIsLoading(false);
                 } else {
                     // Si la session n'existe pas
@@ -208,6 +220,15 @@ export const useSession = (sessionId?: string) => {
                 throw new Error('Nom d\'utilisateur requis pour ajouter une carte');
             }
 
+            // Vérifier si la session est en pause ou fermée
+            const currentSession = sessionRef.current;
+            if (currentSession?.status === 'paused') {
+                throw new Error('La session est en pause. Vous ne pouvez pas ajouter de carte actuellement.');
+            }
+            if (currentSession?.status === 'closed') {
+                throw new Error('La session est fermée. Vous ne pouvez pas ajouter de carte.');
+            }
+
             const userName = userService.getUserName();
 
             // Créer un objet temporaire pour la mise à jour optimiste de l'UI
@@ -249,7 +270,11 @@ export const useSession = (sessionId?: string) => {
         } catch (err) {
             console.error('Failed to add card:', err);
             if (isMounted.current) {
-                setError('Impossible d\'ajouter la carte. Veuillez réessayer.');
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError('Impossible d\'ajouter la carte. Veuillez réessayer.');
+                }
             }
         }
     }, []);
@@ -270,6 +295,38 @@ export const useSession = (sessionId?: string) => {
         }
     }, []);
 
+    // Fonction pour mettre en pause une session
+    const pauseSession = useCallback(async () => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId) return;
+
+        try {
+            await sessionsService.pauseSession(currentSessionId);
+            // La mise à jour sera reçue via le listener onSessionUpdate
+        } catch (err) {
+            console.error('Failed to pause session:', err);
+            if (isMounted.current) {
+                setError('Impossible de mettre en pause la session. Veuillez réessayer.');
+            }
+        }
+    }, []);
+
+    // Fonction pour reprendre une session
+    const resumeSession = useCallback(async () => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId) return;
+
+        try {
+            await sessionsService.resumeSession(currentSessionId);
+            // La mise à jour sera reçue via le listener onSessionUpdate
+        } catch (err) {
+            console.error('Failed to resume session:', err);
+            if (isMounted.current) {
+                setError('Impossible de reprendre la session. Veuillez réessayer.');
+            }
+        }
+    }, []);
+
     // Obtenir les cartes organisées par type de colonne
     const getCardsByType = useCallback((type: ColumnType): Card[] => {
         return cards.filter(card => card.type === type);
@@ -282,6 +339,9 @@ export const useSession = (sessionId?: string) => {
         error,
         addCard,
         closeSession,
-        getCardsByType
+        pauseSession,
+        resumeSession,
+        getCardsByType,
+        isSessionCreator
     };
 };

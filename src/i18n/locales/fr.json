@@ -4,7 +4,8 @@
     "loading": "Chargement...",
     "error": "Une erreur est survenue",
     "cancel": "Annuler",
-    "backToHome": "Retour à l'accueil"
+    "backToHome": "Retour à l'accueil",
+    "slogan": "Simplifiez vos rétrospectives d'équipe avec une plateforme collaborative en temps réel"
   },
   "home": {
     "title": "Plateforme de Rétrospective",
@@ -14,13 +15,15 @@
     "sessionCodePlaceholder": "Entrez le code ou l'ID de la session",
     "joinButton": "Rejoindre",
     "sessionNotFound": "Session non trouvée. Veuillez vérifier le code et réessayer.",
-    "errorJoiningSession": "Erreur lors de la connexion à la session. Veuillez réessayer."
+    "errorJoiningSession": "Erreur lors de la connexion à la session. Veuillez réessayer.",
+    "creatingSession": "Création de votre session..."
   },
   "navigation": {
     "home": "Accueil",
     "newSession": "Nouvelle Session",
     "openMenu": "Ouvrir le menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "subtitle": "Rétrospectives collaboratives"
   },
   "createSession": {
     "title": "Nouvelle Rétrospective",
@@ -28,6 +31,18 @@
     "enterName": "Votre nom",
     "namePlaceholder": "Entrez votre nom",
     "createButton": "Créer la session"
+  },
+  "auth": {
+    "joinSession": "Rejoindre la session",
+    "activityType": "Type",
+    "nameQuestion": "Comment souhaitez-vous être identifié ?",
+    "namePlaceholder": "Votre nom ou pseudo",
+    "charactersLimit": "{count}/20 caractères maximum",
+    "nameAvailable": "Nom disponible ✓",
+    "temporaryConnection": "⚠️ Cette connexion est temporaire. Vos données seront perdues si vous quittez ou fermez la session.",
+    "joiningSession": "Connexion...",
+    "joinButton": "Rejoindre la session",
+    "verifyingSession": "Vérification de la session..."
   },
   "activities": {
     "types": {
@@ -69,15 +84,58 @@
     "addCard": "Ajouter une carte",
     "cardPlaceholder": "Entrez votre commentaire ici",
     "closeSession": "Fermer la session",
+    "pauseSession": "Mettre en pause",
+    "resumeSession": "Reprendre",
+    "activityTimer": "Minuteur d'activité",
+    "setTimer": "Définir un minuteur",
+    "startTimer": "Démarrer",
+    "pauseTimer": "Pause",
+    "resumeTimer": "Reprendre",
+    "stopTimer": "Arrêter",
+    "resetTimer": "Réinitialiser",
+    "timeIsUp": "Temps écoulé !",
+    "timerAdminHelp": "L'ajout de cartes sera désactivé pour tous quand le temps sera écoulé.",
+    "timerParticipantHelp": "Vous ne pourrez plus ajouter de cartes quand le temps sera écoulé.",
+    "activityEnded": "Cette activité est terminée",
+    "cannotAddCardsAnymore": "L'ajout de cartes a été désactivé pour cette activité.",
+    "cannotAddAfterTimerEnded": "Le temps imparti pour cette activité est écoulé. Vous ne pouvez plus ajouter de cartes.",
+    "adminBadge": "Administrateur de session",
+    "sessionPaused": "Session en pause",
+    "pausedAdminMessage": "Vous avez mis cette session en pause. Les participants ne peuvent pas ajouter de cartes.",
+    "pausedParticipantMessage": "L'administrateur a mis cette session en pause. Vous ne pouvez pas ajouter de cartes pour le moment.",
     "confirmClose": "Êtes-vous sûr de vouloir fermer cette session ? Aucune nouvelle carte ne pourra être ajoutée une fois fermée.",
     "sessionClosed": "Cette session est fermée",
+    "noNewCardsMessage": "Aucune nouvelle carte ne peut être ajoutée.",
     "shareLink": "Partager le lien de la session",
     "copied": "Lien copié !",
     "yourName": "Votre nom",
     "anonymous": "Anonyme",
     "submit": "Soumettre",
     "noCards": "Aucune carte pour le moment",
-    "notFound": "Session non trouvée ou supprimée"
+    "notFound": "Session non trouvée ou supprimée",
+    "cannotAddWhenPaused": "La session est en pause. Vous ne pouvez pas ajouter de carte actuellement.",
+    "cannotAddWhenClosed": "La session est fermée. Vous ne pouvez pas ajouter de carte.",
+    "participants": "Participants",
+    "noParticipants": "Aucun participant pour le moment",
+    "showParticipants": "Afficher",
+    "hideParticipants": "Masquer",
+    "you": "Vous",
+    "addActivity": "Ajouter une activité",
+    "noActivities": "Aucune activité n'a encore été ajoutée à cette session."
+  },
+  "participants": {
+    "title": "Participants",
+    "count": "{count}",
+    "show": "Afficher",
+    "hide": "Masquer",
+    "you": "Vous",
+    "empty": "Aucun participant pour le moment",
+    "loading": "Chargement des participants...",
+    "justJoined": "vient de rejoindre",
+    "joinedMinutesAgo": "il y a {minutes} min",
+    "joinedHoursAgo": "il y a {hours} h",
+    "online": "En ligne",
+    "offline": "Hors ligne"
   },
   "user": {
     "enterYourName": "Entrez votre nom",
@@ -87,5 +145,8 @@
     "continue": "Continuer",
     "welcomeBack": "Bienvenue, {name} !",
     "changeUsername": "Changer de nom"
+  },
+  "timer": {
+    "minutes": "minutes"
   }
 }

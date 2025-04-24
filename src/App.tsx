@@ -4,11 +4,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { useTranslation } from 'react-i18next';
 import HomePage from './pages/HomePage';
-import CreateSessionPage from './pages/CreateSessionPage';
+import UserAuthPage from './pages/UserAuthPage';
 import SessionPage from './pages/SessionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import NavBar from './components/layout/NavBar';
-import ErrorBoundary from "./components/Comons/ErrorBoundary";
+import ErrorBoundary from "./components/commons/ErrorBoundary";
 
 function App() {
   // @ts-ignore
@@ -23,7 +23,7 @@ function App() {
             <main className="container mx-auto p-4 flex-grow">
               <Routes>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/create" element={<CreateSessionPage />} />
+                <Route path="/auth/:sessionId" element={<UserAuthPage />} />
                 <Route path="/session/:sessionId" element={
                   <ErrorBoundary fallback={
                     <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">

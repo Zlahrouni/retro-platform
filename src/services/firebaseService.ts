@@ -1,5 +1,4 @@
 // src/services/firebaseService.ts
-
 import {
     collection,
     doc,
@@ -13,11 +12,18 @@ import {
     orderBy,
     serverTimestamp,
     onSnapshot,
-    Timestamp
+    Timestamp,
 } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
-import { Session, Card, ActivityType, ColumnType } from '../types/types';
+import { Session, Card, ActivityType, ColumnType, SessionStatus } from '../types/types';
 import {db} from "../config/firebase";
+
+// Type pour les participants
+export interface Participant {
+    id: string;
+    username: string;
+    joinedAt: Date | Timestamp;
+}
 
 // Gestion des sessions de rétrospective
 export const sessionsService = {
@@ -26,22 +32,141 @@ export const sessionsService = {
         // Générer un code court pour la session (pour faciliter l'accès)
         const sessionCode = nanoid(6);
 
-        const sessionData = {
+        const sessionData: any = {
             activityType,
-            status: 'open',
+            status: 'open' as SessionStatus,
             createdBy,
             createdAt: serverTimestamp(),
-            code: sessionCode
+            code: sessionCode,
+            participants: [] // Initialiser un tableau vide de participants
         };
 
         // Option 1: Laisser Firebase générer l'ID
         const docRef = await addDoc(collection(db, 'sessions'), sessionData);
         return docRef.id;
+    },
 
-        // Option 2: Utiliser un ID personnalisé
-        // const sessionId = nanoid(10);
-        // await setDoc(doc(db, 'sessions', sessionId), sessionData);
-        // return sessionId;
+    async addParticipant(sessionId: string, username: string): Promise<string> {
+        if (!sessionId || !username.trim()) {
+            throw new Error("SessionId et username requis pour ajouter un participant");
+        }
+
+        try {
+            // Vérifier si la session existe
+            const sessionRef = doc(db, 'sessions', sessionId);
+            const sessionDoc = await getDoc(sessionRef);
+
+            if (!sessionDoc.exists()) {
+                throw new Error(`Session ${sessionId} n'existe pas`);
+            }
+
+            const participantId = nanoid(8); // Générer un ID unique pour le participant
+
+            // Créer l'objet participant avec une date JavaScript normale
+            // au lieu de serverTimestamp() qui ne fonctionne pas avec arrayUnion
+            const participantData = {
+                id: participantId,
+                username: username.trim(),
+                joinedAt: new Date().toISOString(), // Utiliser une chaîne ISO pour éviter des problèmes de sérialisation
+                status: 'online'
+            };
+
+            console.log(`Ajout du participant ${username} (${participantId}) à la session ${sessionId}`);
+
+            // Récupérer les participants actuels
+            const sessionData = sessionDoc.data();
+            const currentParticipants = sessionData?.participants || [];
+
+            // Ajouter le nouveau participant
+            const updatedParticipants = [...currentParticipants, participantData];
+
+            // Mettre à jour le document avec la liste complète des participants
+            await updateDoc(sessionRef, {
+                participants: updatedParticipants
+            });
+
+            console.log(`Participant ${username} ajouté avec succès à la session ${sessionId}`);
+            return participantId;
+        } catch (error) {
+            console.error("Erreur lors de l'ajout du participant:", error);
+            throw error;
+        }
+    },
+
+    // Récupérer les participants d'une session
+    async getSessionParticipants(sessionId: string): Promise<Participant[]> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour récupérer les participants");
+            return [];
+        }
+
+        try {
+            const docRef = doc(db, 'sessions', sessionId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists() && docSnap.data().participants) {
+                const data = docSnap.data();
+                const participants = data.participants || [];
+
+                // Convertir les Timestamps en Date
+                return participants.map((participant: any) => {
+                    if (participant.joinedAt &&
+                        typeof participant.joinedAt === 'object' &&
+                        'toDate' in participant.joinedAt) {
+                        return {
+                            ...participant,
+                            joinedAt: participant.joinedAt.toDate()
+                        };
+                    }
+                    return participant;
+                });
+            }
+            return [];
+        } catch (error) {
+            console.error("Erreur lors de la récupération des participants:", error);
+            return [];
+        }
+    },
+
+    // Observer les participants en temps réel
+    onParticipantsUpdate(sessionId: string, callback: (participants: Participant[]) => void) {
+        if (!sessionId) {
+            console.error("SessionId manquant pour l'écoute des participants");
+            callback([]);
+            return () => {}; // Retourner une fonction de nettoyage vide
+        }
+
+        try {
+            const docRef = doc(db, 'sessions', sessionId);
+
+            return onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().participants) {
+                    const data = docSnap.data();
+                    const participants = data.participants || [];
+
+                    // Convertir les Timestamps en Date
+                    const processedParticipants = participants.map((participant: any) => {
+                        if (participant.joinedAt &&
+                            typeof participant.joinedAt === 'object' &&
+                            'toDate' in participant.joinedAt) {
+                            return {
+                                ...participant,
+                                joinedAt: participant.joinedAt.toDate()
+                            };
+                        }
+                        return participant;
+                    });
+
+                    callback(processedParticipants);
+                } else {
+                    callback([]);
+                }
+            });
+        } catch (error) {
+            console.error("Erreur dans onParticipantsUpdate:", error);
+            callback([]);
+            return () => {};
+        }
     },
 
     // Récupérer une session par ID
@@ -79,6 +204,7 @@ export const sessionsService = {
                     status: data.status || 'open',
                     createdBy: data.createdBy || 'Unknown',
                     createdAt: createdAt,
+                    participants: data.participants || []
                 };
             } else {
                 console.log("Session non trouvée:", sessionId);
@@ -104,28 +230,53 @@ export const sessionsService = {
         if (!querySnapshot.empty) {
             const docSnap = querySnapshot.docs[0];
             const data = docSnap.data();
+
+            // Gérer correctement les dates
+            let createdAt: Date;
+            if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+                createdAt = data.createdAt.toDate();
+            } else if (data.createdAt) {
+                createdAt = new Date(data.createdAt);
+            } else {
+                createdAt = new Date();
+            }
+
             return {
                 id: docSnap.id,
                 activityType: data.activityType,
                 status: data.status,
                 createdBy: data.createdBy,
-                createdAt: data.createdAt?.toDate() || new Date(),
+                createdAt: createdAt,
+                participants: data.participants || []
             };
         }
         return null;
     },
 
-    // Fermer une session
-    async closeSession(sessionId: string): Promise<void> {
+    // Mettre à jour le statut d'une session
+    async updateSessionStatus(sessionId: string, status: SessionStatus): Promise<void> {
         if (!sessionId) {
-            console.error("SessionId manquant pour la fermeture");
-            throw new Error("SessionId requis pour fermer une session");
+            console.error("SessionId manquant pour la mise à jour du statut");
+            throw new Error("SessionId requis pour mettre à jour le statut d'une session");
         }
 
         const sessionRef = doc(db, 'sessions', sessionId);
-        await updateDoc(sessionRef, {
-            status: 'closed'
-        });
+        await updateDoc(sessionRef, { status });
+    },
+
+    // Fermer une session
+    async closeSession(sessionId: string): Promise<void> {
+        await this.updateSessionStatus(sessionId, 'closed');
+    },
+
+    // Mettre en pause une session
+    async pauseSession(sessionId: string): Promise<void> {
+        await this.updateSessionStatus(sessionId, 'paused');
+    },
+
+    // Reprendre une session mise en pause
+    async resumeSession(sessionId: string): Promise<void> {
+        await this.updateSessionStatus(sessionId, 'open');
     },
 
     // Écouter les changements sur une session (temps réel)
@@ -176,6 +327,7 @@ export const sessionsService = {
                                 status: data.status || 'open',
                                 createdBy: data.createdBy || 'Unknown',
                                 createdAt: createdAt,
+                                participants: data.participants || []
                             };
 
                             callback(session);
@@ -313,7 +465,6 @@ export const cardsService = {
                 orderBy('createdAt', 'asc')
             );
 
-            // REMPLACEZ LE CODE EXISTANT DE onSnapshot PAR CELUI-CI
             return onSnapshot(q,
                 // Succès
                 (querySnapshot) => {

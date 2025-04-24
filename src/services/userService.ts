@@ -5,7 +5,8 @@ import {
     signOut as firebaseSignOut,
     onAuthStateChanged
 } from 'firebase/auth';
-import {auth} from "../config/firebase";
+import { auth } from "../config/firebase";
+import { sessionsService } from './firebaseService';
 
 export const userService = {
     // Se connecter anonymement (pas besoin de compte)
@@ -42,8 +43,37 @@ export const userService = {
         return localStorage.getItem('userName') || '';
     },
 
+    // Définir le nom d'utilisateur et l'ajouter à la session
+    async setUserNameAndJoinSession(name: string, sessionId?: string): Promise<string | null> {
+        if (!name.trim()) {
+            throw new Error('Un nom d\'utilisateur est requis');
+        }
+
+        // Sauvegarder le nom d'utilisateur localement
+        localStorage.setItem('userName', name.trim());
+        console.log(`Nom d'utilisateur '${name.trim()}' sauvegardé localement`);
+
+        // Si un sessionId est fourni, ajouter l'utilisateur comme participant
+        if (sessionId) {
+            try {
+                console.log(`Tentative d'ajout du participant '${name.trim()}' à la session ${sessionId}`);
+                const participantId = await sessionsService.addParticipant(sessionId, name.trim());
+                console.log(`Participant ajouté avec succès, ID: ${participantId}`);
+                return participantId;
+            } catch (error) {
+                console.error("Erreur lors de l'ajout à la session:", error);
+                // Continuer malgré l'erreur - au moins le nom est stocké localement
+                return null;
+            }
+        }
+
+        return null;
+    },
+
+
+    // Version simple pour compatibilité avec le code existant
     setUserName(name: string): void {
-        localStorage.setItem('userName', name);
+        localStorage.setItem('userName', name.trim());
     },
 
     // Vérifier si l'utilisateur a déjà défini un nom

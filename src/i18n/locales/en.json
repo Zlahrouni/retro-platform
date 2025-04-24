@@ -4,7 +4,8 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "cancel": "Cancel",
-    "backToHome": "Back to home"
+    "backToHome": "Back to Home",
+    "slogan": "Simplify your team retrospectives with a real-time collaborative platform"
   },
   "home": {
     "title": "Retrospective Platform",
@@ -14,13 +15,15 @@
     "sessionCodePlaceholder": "Enter session code or ID",
     "joinButton": "Join",
     "sessionNotFound": "Session not found. Please check the code and try again.",
-    "errorJoiningSession": "Error joining session. Please try again."
+    "errorJoiningSession": "Error joining session. Please try again.",
+    "creatingSession": "Creating your session..."
   },
   "navigation": {
     "home": "Home",
     "newSession": "New Session",
     "openMenu": "Open Menu",
-    "closeMenu": "Close Menu"
+    "closeMenu": "Close Menu",
+    "subtitle": "Collaborative retrospectives"
   },
   "createSession": {
     "title": "New Retrospective",
@@ -28,6 +31,18 @@
     "enterName": "Your name",
     "namePlaceholder": "Enter your name",
     "createButton": "Create session"
+  },
+  "auth": {
+    "joinSession": "Join the session",
+    "activityType": "Type",
+    "nameQuestion": "How would you like to be identified?",
+    "namePlaceholder": "Your name or nickname",
+    "charactersLimit": "{count}/20 characters maximum",
+    "nameAvailable": "Name available ✓",
+    "temporaryConnection": "⚠️ This connection is temporary. Your data will be lost if you leave or close the session.",
+    "joiningSession": "Connecting...",
+    "joinButton": "Join the session",
+    "verifyingSession": "Verifying session..."
   },
   "activities": {
     "types": {
@@ -69,15 +84,58 @@
     "addCard": "Add a card",
     "cardPlaceholder": "Enter your comment here",
     "closeSession": "Close session",
+    "pauseSession": "Pause",
+    "resumeSession": "Resume",
+    "activityTimer": "Activity Timer",
+    "setTimer": "Set timer",
+    "startTimer": "Start",
+    "pauseTimer": "Pause",
+    "resumeTimer": "Resume",
+    "stopTimer": "Stop",
+    "resetTimer": "Reset",
+    "timeIsUp": "Time's up!",
+    "timerAdminHelp": "Card adding will be disabled for everyone when time is up.",
+    "timerParticipantHelp": "You won't be able to add cards when time is up.",
+    "activityEnded": "This activity has ended",
+    "cannotAddCardsAnymore": "Adding cards has been disabled for this activity.",
+    "cannotAddAfterTimerEnded": "The time for this activity has ended. You can no longer add cards.",
+    "adminBadge": "Session Admin",
+    "sessionPaused": "Session paused",
+    "pausedAdminMessage": "You've paused this session. Participants cannot add cards.",
+    "pausedParticipantMessage": "The admin has paused this session. You cannot add cards at the moment.",
     "confirmClose": "Are you sure you want to close this session? No new cards can be added once it's closed.",
     "sessionClosed": "This session is closed",
+    "noNewCardsMessage": "No new cards can be added.",
     "shareLink": "Share session link",
     "copied": "Link copied!",
     "yourName": "Your name",
     "anonymous": "Anonymous",
     "submit": "Submit",
     "noCards": "No cards yet",
-    "notFound": "Session not found or has been deleted"
+    "notFound": "Session not found or deleted",
+    "cannotAddWhenPaused": "The session is paused. You cannot add a card right now.",
+    "cannotAddWhenClosed": "The session is closed. You cannot add a card.",
+    "participants": "Participants",
+    "noParticipants": "No participants yet",
+    "showParticipants": "Show",
+    "hideParticipants": "Hide",
+    "you": "You",
+    "addActivity": "Add an activity",
+    "noActivities": "No activities have been added to this session yet."
+  },
+  "participants": {
+    "title": "Participants",
+    "count": "{count}",
+    "show": "Show",
+    "hide": "Hide",
+    "you": "You",
+    "empty": "No participants yet",
+    "loading": "Loading participants...",
+    "justJoined": "just joined",
+    "joinedMinutesAgo": "{minutes} min ago",
+    "joinedHoursAgo": "{hours} h ago",
+    "online": "Online",
+    "offline": "Offline"
   },
   "user": {
     "enterYourName": "Enter your name",
@@ -87,5 +145,8 @@
     "continue": "Continue",
     "welcomeBack": "Welcome back, {name}!",
     "changeUsername": "Change username"
+  },
+  "timer": {
+    "minutes": "minutes"
   }
 }
