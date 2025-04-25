@@ -10,10 +10,8 @@ import ParticipantsList from '../components/session/ParticipantsList';
 import ActivityTypeModal from '../components/activities/ActivityTypeModal';
 import IceBreakerSelectionModal from '../components/activities/IceBreakerSelectionModal';
 import RetroActivitySelectionModal from '../components/activities/RetroActivitySelectionModal';
-import ActivityList, { ActivityItem } from '../components/session/ActivityList';
 import AdminActivityList from '../components/session/AdminActivityList';
 import WaitingForActivity from '../components/session/WaitingForActivity';
-import ActivityTimer from '../components/session/ActivityTimer';
 import SessionStatusBanner from '../components/session/SessionStatusBanner';
 import { ActivityType } from '../types/types';
 import EmptyState from "../components/session/EmptyState";
@@ -159,9 +157,6 @@ const SessionPage: React.FC = () => {
         }
     }, [isSessionCreator, deleteActivity, t]);
 
-    const handleTimerComplete = useCallback(() => {
-        console.log("Timer completed");
-    }, []);
 
     // Fonctions de rendu conditionnelles
     const renderLoading = () => (
@@ -308,15 +303,6 @@ const SessionPage: React.FC = () => {
                     <SessionStatusBanner
                         status={session.status}
                         isAdmin={isSessionCreator}
-                    />
-                )}
-
-                {/* Minuteur d'activité (si admin) */}
-                {isSessionCreator && sessionId && (
-                    <ActivityTimer
-                        isAdmin={isSessionCreator}
-                        sessionId={sessionId}
-                        onTimerComplete={handleTimerComplete}
                     />
                 )}
 

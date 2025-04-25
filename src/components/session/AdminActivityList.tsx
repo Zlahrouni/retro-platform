@@ -2,7 +2,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityData } from '../../services/activitiesService';
-import { ActivityType } from '../../types/types';
 import { formatTimeHHMM, getTimestamp } from '../../utils/dateUtils';
 
 interface AdminActivityListProps {
