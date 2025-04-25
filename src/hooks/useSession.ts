@@ -16,7 +16,7 @@ export const useCreateSession = () => {
         setError(null);
 
         try {
-            // Stocker le nom d'utilisateur si fourni
+            // Stocker le nom d'utilisateur si fourni (pour s'assurer qu'il est défini avant de créer la session)
             if (userName && userName.trim()) {
                 userService.setUserName(userName.trim());
             } else if (!userService.hasUserName()) {
@@ -26,11 +26,8 @@ export const useCreateSession = () => {
                 return;
             }
 
-            // Créer la session
-            const sessionId = await sessionsService.createSession(
-                activityType,
-                userService.getUserName()
-            );
+            // Créer la session - la fonction createSession récupère maintenant directement le nom depuis userService
+            const sessionId = await sessionsService.createSession(activityType);
 
             // Rediriger vers la page de session
             navigate(`/session/${sessionId}`);
@@ -71,10 +68,31 @@ export const useSession = (sessionId?: string) => {
     useEffect(() => {
         sessionRef.current = session;
 
-        // Vérifier si l'utilisateur actuel est le créateur de la session
+        // Vérifier si l'utilisateur actuel est l'administrateur de la session
         if (session) {
             const userName = userService.getUserName();
-            setIsSessionCreator(session.createdBy === userName);
+
+            // Déterminer le statut d'administrateur
+            let isAdmin = false;
+
+            // Vérifier d'abord le champ adminId (prioritaire)
+            if (session.adminId) {
+                isAdmin = session.adminId === userName;
+            }
+            // Si pas d'adminId, vérifier createdBy (compatibilité)
+            else if (session.createdBy && session.createdBy !== "temp-session-creator") {
+                isAdmin = session.createdBy === userName;
+            }
+
+            setIsSessionCreator(isAdmin);
+
+            // Pour le débogage
+            console.log('Vérification admin:', {
+                userName,
+                adminId: session.adminId,
+                createdBy: session.createdBy,
+                isAdmin
+            });
         }
     }, [session]);
 

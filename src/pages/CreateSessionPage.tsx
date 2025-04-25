@@ -22,7 +22,11 @@ const CreateSessionPage: React.FC = () => {
             return;
         }
 
-        await createSession(activityType, userName);
+        // Store username before creating session
+        userService.setUserName(userName.trim());
+
+        // Pass only the activity type - the userName will be taken from userService
+        await createSession(activityType);
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

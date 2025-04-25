@@ -105,7 +105,19 @@
     "delete": "Delete",
     "confirmDelete": "Are you sure you want to delete this activity?",
     "addAnotherActivity": "Need another activity for this session?",
-    "noActivitiesStarted": "No activities have been started yet"
+    "noActivitiesStarted": "No activities have been started yet",
+    "launch": "Launch",
+    "launched": "Launched",
+    "notLaunched": "Pending",
+    "inProgress": "In progress",
+    "adminView": "Activity Management (admin view)",
+    "adminInstructions": "As an admin, you can add, launch, and delete activities. Activities will only be visible to participants once launched.",
+    "addActivityInstruction": "Use the \"Add an activity\" button to get started.",
+    "noActivitiesYet": "No activities have been added yet.",
+    "activeRetro": "Active Retrospective",
+    "activeRetroDescription": "The facilitator has launched this activity. You can now participate by adding your comments in the columns below.",
+    "adminOnlyVisible": "Only visible to you",
+    "visibleToAll": "Visible to everyone"
   },
   "session": {
     "addCard": "Add a card",
@@ -151,7 +163,9 @@
     "addAnotherActivity": "Need another activity for this session?",
     "noActivities": "No activities have been added to this session yet.",
     "noActivitiesYet": "Time to get started!",
-    "addFirstActivityHelp": "Add your first activity to kickstart this collaborative session."
+    "addFirstActivityHelp": "Add your first activity to kickstart this collaborative session.",
+    "waitingForActivity": "Waiting for an activity to start...",
+    "waitingForActivityDescription": "The session facilitator is preparing the next activity. Please wait a moment."
   },
   "participants": {
     "title": "Participants",

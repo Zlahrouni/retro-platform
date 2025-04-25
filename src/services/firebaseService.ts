@@ -17,6 +17,7 @@ import {
 import { nanoid } from 'nanoid';
 import { Session, Card, ActivityType, ColumnType, SessionStatus } from '../types/types';
 import {db} from "../config/firebase";
+import {userService} from "./userService";
 
 // Type pour les participants
 export interface Participant {
@@ -28,21 +29,36 @@ export interface Participant {
 // Gestion des sessions de rétrospective
 export const sessionsService = {
     // Créer une nouvelle session
-    async createSession(activityType: ActivityType, createdBy: string): Promise<string> {
+    async createSession(activityType: ActivityType): Promise<string> {
         // Générer un code court pour la session (pour faciliter l'accès)
         const sessionCode = nanoid(6);
+
+        // Récupérer le vrai nom d'utilisateur depuis localStorage
+        const currentUsername = userService.getUserName();
+
+        // Si pas de nom d'utilisateur, demander à l'utilisateur d'en définir un
+        if (!currentUsername || !currentUsername.trim()) {
+            throw new Error("Un nom d'utilisateur est requis pour créer une session");
+        }
 
         const sessionData: any = {
             activityType,
             status: 'open' as SessionStatus,
-            createdBy,
+            createdBy: currentUsername, // Utiliser le vrai nom d'utilisateur
+            adminId: currentUsername,   // Champ explicite pour l'administrateur
             createdAt: serverTimestamp(),
             code: sessionCode,
             participants: [] // Initialiser un tableau vide de participants
         };
 
-        // Option 1: Laisser Firebase générer l'ID
+        console.log("Création d'une session avec administrateur:", currentUsername);
+
+        // Laisser Firebase générer l'ID
         const docRef = await addDoc(collection(db, 'sessions'), sessionData);
+
+        // Ajouter automatiquement le créateur comme premier participant
+        await this.addParticipant(docRef.id, currentUsername);
+
         return docRef.id;
     },
 
@@ -60,10 +76,30 @@ export const sessionsService = {
                 throw new Error(`Session ${sessionId} n'existe pas`);
             }
 
-            const participantId = nanoid(8); // Générer un ID unique pour le participant
+            // Récupérer les participants actuels
+            const sessionData = sessionDoc.data();
+            const currentParticipants = sessionData?.participants || [];
+
+            // Vérifier si le nom d'utilisateur existe déjà dans cette session
+            const usernameExists = currentParticipants.some(
+                (participant: any) => participant.username.toLowerCase() === username.trim().toLowerCase()
+            );
+
+            if (usernameExists) {
+                console.log(`Le nom d'utilisateur "${username}" existe déjà dans la session ${sessionId}. Le participant ne sera pas ajouté à nouveau.`);
+
+                // Trouver et retourner l'ID du participant existant
+                const existingParticipant = currentParticipants.find(
+                    (participant: any) => participant.username.toLowerCase() === username.trim().toLowerCase()
+                );
+
+                return existingParticipant.id;
+            }
+
+            // Si le nom n'existe pas encore, générer un ID unique pour le participant
+            const participantId = nanoid(8);
 
             // Créer l'objet participant avec une date JavaScript normale
-            // au lieu de serverTimestamp() qui ne fonctionne pas avec arrayUnion
             const participantData = {
                 id: participantId,
                 username: username.trim(),
@@ -72,10 +108,6 @@ export const sessionsService = {
             };
 
             console.log(`Ajout du participant ${username} (${participantId}) à la session ${sessionId}`);
-
-            // Récupérer les participants actuels
-            const sessionData = sessionDoc.data();
-            const currentParticipants = sessionData?.participants || [];
 
             // Ajouter le nouveau participant
             const updatedParticipants = [...currentParticipants, participantData];
@@ -217,6 +249,24 @@ export const sessionsService = {
         }
     },
 
+    async isSessionAdmin(sessionId: string, username: string): Promise<boolean> {
+        if (!sessionId || !username) return false;
+
+        try {
+            const session = await this.getSessionById(sessionId);
+            if (!session) return false;
+
+            // Vérifier d'abord adminId (champ principal), puis createdBy
+            return (
+                (session.adminId && session.adminId === username) ||
+                (session.createdBy === username && session.createdBy !== "temp-session-creator")
+            );
+        } catch (error) {
+            console.error("Erreur lors de la vérification du statut d'administrateur:", error);
+            return false;
+        }
+    },
+
     // Récupérer une session par code
     async getSessionByCode(code: string): Promise<Session | null> {
         if (!code || !code.trim()) {
@@ -251,6 +301,52 @@ export const sessionsService = {
             };
         }
         return null;
+    },
+
+    async createSessionWithTemporaryAdmin(activityType: ActivityType): Promise<string> {
+        // Générer un code court pour la session (pour faciliter l'accès)
+        const sessionCode = nanoid(6);
+
+        const sessionData: any = {
+            activityType,
+            status: 'open' as SessionStatus,
+            createdBy: "temp-session-creator",  // Marqueur pour indiquer qu'un admin réel est nécessaire
+            adminId: null,                     // Sera défini lors de l'authentification du premier utilisateur
+            createdAt: serverTimestamp(),
+            code: sessionCode,
+            participants: [] // Initialiser un tableau vide de participants
+        };
+
+        console.log("Création d'une session avec administrateur temporaire");
+
+        // Laisser Firebase générer l'ID
+        const docRef = await addDoc(collection(db, 'sessions'), sessionData);
+
+        return docRef.id;
+    },
+
+    async updateSessionAdmin(sessionId: string, username: string): Promise<boolean> {
+        if (!sessionId || !username.trim()) {
+            console.error("SessionId et nom d'utilisateur requis pour définir l'administrateur");
+            return false;
+        }
+
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+
+            // Mise à jour des deux champs pour assurer la compatibilité avec le code existant
+            // À terme, on pourrait simplifier en n'utilisant qu'un seul champ
+            await updateDoc(sessionRef, {
+                adminId: username.trim(),     // Champ principal d'identification de l'admin
+                createdBy: username.trim()    // Maintenu pour compatibilité avec le code existant
+            });
+
+            console.log(`Administrateur de la session ${sessionId} défini: ${username}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la définition de l'administrateur:", error);
+            return false;
+        }
     },
 
     // Mettre à jour le statut d'une session

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../hooks/useSession';
+import { useActivities } from '../hooks/useActivities';
 import { userService } from '../services/userService';
 import SessionControls from '../components/session/SessionControls';
 import ParticipantsList from '../components/session/ParticipantsList';
@@ -10,6 +11,8 @@ import ActivityTypeModal from '../components/activities/ActivityTypeModal';
 import IceBreakerSelectionModal from '../components/activities/IceBreakerSelectionModal';
 import RetroActivitySelectionModal from '../components/activities/RetroActivitySelectionModal';
 import ActivityList, { ActivityItem } from '../components/session/ActivityList';
+import AdminActivityList from '../components/session/AdminActivityList';
+import WaitingForActivity from '../components/session/WaitingForActivity';
 import ActivityTimer from '../components/session/ActivityTimer';
 import SessionStatusBanner from '../components/session/SessionStatusBanner';
 import { ActivityType } from '../types/types';
@@ -23,24 +26,45 @@ const SessionPage: React.FC = () => {
     const [retries, setRetries] = useState(0);
     const maxRetries = 3;
 
-    // Modal states
+    // États pour les modals
     const [showActivityTypeModal, setShowActivityTypeModal] = useState(false);
     const [showIceBreakerModal, setShowIceBreakerModal] = useState(false);
     const [showRetroModal, setShowRetroModal] = useState(false);
 
-    // Activities state (temporary, will be replaced with backend integration)
-    const [activities, setActivities] = useState<ActivityItem[]>([]);
-
-    // Utiliser notre hook personnalisé
+    // Utiliser notre hook personnalisé pour la session
     const {
         session,
-        isLoading,
-        error,
+        isLoading: sessionLoading,
+        error: sessionError,
         closeSession,
         pauseSession,
         resumeSession,
         isSessionCreator
     } = useSession(sessionId);
+
+    useEffect(() => {
+        if (!userService.hasUserName() && sessionId) {
+            // Rediriger vers la page d'authentification si l'utilisateur n'a pas de nom
+            console.log("Redirection vers la page d'authentification: utilisateur sans nom");
+            navigate(`/auth/${sessionId}`);
+        }
+    }, [sessionId, navigate]);
+
+    // Utiliser notre nouveau hook pour les activités
+    const {
+        activities: firestoreActivities,
+        isLoading: activitiesLoading,
+        error: activitiesError,
+        addActivity,
+        launchActivity,
+        deleteActivity,
+        hasLaunchedRetroActivity,
+        getLaunchedRetroActivity
+    } = useActivities(sessionId, isSessionCreator);
+
+    // État combiné de chargement
+    const isLoading = sessionLoading || activitiesLoading;
+    const error = sessionError || activitiesError;
 
     // Vérifier si l'utilisateur a un nom au chargement
     useEffect(() => {
@@ -103,46 +127,37 @@ const SessionPage: React.FC = () => {
 
     const handleIceBreakerSelected = useCallback((type: string) => {
         setShowIceBreakerModal(false);
-        // Add ice breaker to activities (mock implementation)
-        const newActivity: ActivityItem = {
-            id: `ice_${Date.now()}`,
-            type: 'iceBreaker',
-            iceBreakerType: type,
-            status: 'pending',
-            createdAt: new Date()
-        };
-        setActivities(prev => [...prev, newActivity]);
-    }, []);
+
+        // Utiliser le hook pour ajouter l'activité à Firestore
+        if (userService.hasUserName()) {
+            const userName = userService.getUserName();
+            addActivity('iceBreaker', userName, type);
+        }
+    }, [addActivity]);
 
     const handleRetroActivitySelected = useCallback((type: ActivityType) => {
         setShowRetroModal(false);
-        // Add retro activity to activities (mock implementation)
-        const newActivity: ActivityItem = {
-            id: `retro_${Date.now()}`,
-            type: type,
-            status: 'pending',
-            createdAt: new Date()
-        };
-        setActivities(prev => [...prev, newActivity]);
-    }, []);
 
-    const handleStartActivity = useCallback((activityId: string) => {
-        // Mock implementation - just change status
-        setActivities(prev =>
-            prev.map(activity =>
-                activity.id === activityId
-                    ? { ...activity, status: 'active' as const }
-                    : activity
-            )
-        );
-    }, []);
-
-    const handleDeleteActivity = useCallback((activityId: string) => {
-        if (window.confirm(t('activities.confirmDelete'))) {
-            // Mock implementation - remove from local state
-            setActivities(prev => prev.filter(activity => activity.id !== activityId));
+        // Utiliser le hook pour ajouter l'activité à Firestore
+        if (userService.hasUserName()) {
+            const userName = userService.getUserName();
+            addActivity(type, userName);
         }
-    }, [t]);
+    }, [addActivity]);
+
+    const handleLaunchActivity = useCallback(async (activityId: string) => {
+        if (!isSessionCreator) return;
+
+        await launchActivity(activityId);
+    }, [isSessionCreator, launchActivity]);
+
+    const handleDeleteActivity = useCallback(async (activityId: string) => {
+        if (!isSessionCreator) return;
+
+        if (window.confirm(t('activities.confirmDelete'))) {
+            await deleteActivity(activityId);
+        }
+    }, [isSessionCreator, deleteActivity, t]);
 
     const handleTimerComplete = useCallback(() => {
         console.log("Timer completed");
@@ -178,6 +193,74 @@ const SessionPage: React.FC = () => {
             )}
         </div>
     );
+
+    const renderAdminView = () => {
+        return (
+            <>
+                {/* Liste des activités pour l'admin avec contrôles */}
+                {firestoreActivities.length > 0 ? (
+                    <AdminActivityList
+                        activities={firestoreActivities}
+                        onLaunchActivity={handleLaunchActivity}
+                        onDeleteActivity={handleDeleteActivity}
+                    />
+                ) : (
+                    <EmptyState
+                        onAddActivity={handleAddActivityClick}
+                        isFirstActivity={true}
+                    />
+                )}
+
+                {/* Interface pour ajouter une activité si session non fermée */}
+                {session && session.status !== 'closed' && firestoreActivities.length > 0 && (
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={handleAddActivityClick}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            {t('session.addActivity')}
+                        </button>
+                    </div>
+                )}
+            </>
+        );
+    };
+
+    const renderParticipantView = () => {
+        // Vérifier s'il y a une activité de rétro lancée
+        const hasActiveRetro = hasLaunchedRetroActivity();
+
+        if (hasActiveRetro) {
+            // Si une activité est lancée, on affichera l'activité
+            const activeActivity = getLaunchedRetroActivity();
+            return (
+                <div className="mb-6">
+                    <div className="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-green-500">
+                        <div className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 className="font-medium text-lg text-gray-800">
+                                {t('activities.activeRetro')}: {activeActivity && t(`activities.types.${activeActivity.type}`)}
+                            </h3>
+                        </div>
+                        <p className="mt-2 text-gray-600">
+                            {t('activities.activeRetroDescription')}
+                        </p>
+                    </div>
+
+                    {/* Ici, on intégrerait les colonnes pour l'activité en cours */}
+                    {/* Ce code sera implémenté dans une partie future */}
+                </div>
+            );
+        } else {
+            // Sinon, afficher l'écran d'attente
+            return <WaitingForActivity />;
+        }
+    };
 
     const renderSessionContent = () => {
         if (!session) return null;
@@ -240,29 +323,14 @@ const SessionPage: React.FC = () => {
                 {/* Liste des participants */}
                 {sessionId && <ParticipantsList sessionId={sessionId} />}
 
-                {/* Liste des activités (si présentes) */}
-                {activities.length > 0 && (
-                    <ActivityList
-                        activities={activities}
-                        onStartActivity={isSessionCreator ? handleStartActivity : undefined}
-                        onDeleteActivity={isSessionCreator ? handleDeleteActivity : undefined}
-                        isAdmin={isSessionCreator}
-                    />
-                )}
+                {/* Vue différente selon que l'utilisateur est admin ou non */}
+                {isSessionCreator ? renderAdminView() : renderParticipantView()}
 
                 {/* Message de partage */}
                 {showShareMessage && (
                     <div className="fixed top-4 right-4 bg-green-100 text-green-700 py-2 px-4 rounded shadow-md animate-fadeOut">
                         {t('session.copied')}
                     </div>
-                )}
-
-                {/* Interface pour ajouter une activité */}
-                {session.status !== 'closed' && (
-                    <EmptyState
-                        onAddActivity={handleAddActivityClick}
-                        isFirstActivity={activities.length === 0}
-                    />
                 )}
 
                 {/* Modals for activity selection */}

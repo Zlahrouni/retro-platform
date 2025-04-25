@@ -40,7 +40,13 @@ export const userService = {
 
     // Obtenir ou définir le nom d'utilisateur local (pour les utilisateurs qui ne veulent pas s'authentifier)
     getUserName(): string {
-        return localStorage.getItem('userName') || '';
+        const savedUsername = localStorage.getItem('userName');
+        if (!savedUsername || savedUsername.trim() === '') {
+            console.warn("Aucun nom d'utilisateur trouvé dans localStorage");
+            return '';
+        }
+        console.log("Nom d'utilisateur récupéré depuis localStorage:", savedUsername);
+        return savedUsername;
     },
 
     // Définir le nom d'utilisateur et l'ajouter à la session
@@ -50,8 +56,8 @@ export const userService = {
         }
 
         // Sauvegarder le nom d'utilisateur localement
-        localStorage.setItem('userName', name.trim());
-        console.log(`Nom d'utilisateur '${name.trim()}' sauvegardé localement`);
+        this.setUserName(name.trim());
+        console.log(`Nom d'utilisateur '${name.trim()}' sauvegardé localement pour rejoindre la session`);
 
         // Si un sessionId est fourni, ajouter l'utilisateur comme participant
         if (sessionId) {
@@ -70,10 +76,16 @@ export const userService = {
         return null;
     },
 
-
     // Version simple pour compatibilité avec le code existant
     setUserName(name: string): void {
-        localStorage.setItem('userName', name.trim());
+        if (!name.trim()) {
+            console.warn("Tentative de définition d'un nom d'utilisateur vide");
+            return;
+        }
+
+        const trimmedName = name.trim();
+        localStorage.setItem('userName', trimmedName);
+        console.log(`Nom d'utilisateur '${trimmedName}' sauvegardé dans localStorage`);
     },
 
     // Vérifier si l'utilisateur a déjà défini un nom

@@ -1,4 +1,4 @@
-// src/pages/UserAuthPage.tsx
+// src/pages/UserAuthPage.tsx - Gestion d'admin simplifiée
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -14,8 +14,9 @@ const UserAuthPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isValidating, setIsValidating] = useState(true);
     const [sessionName, setSessionName] = useState<string | null>(null);
+    const [isNewSession, setIsNewSession] = useState(false);
 
-    // Récupérer le nom d'utilisateur existant du localStorage et valider la session
+    // Récupérer le nom d'utilisateur existant et valider la session
     useEffect(() => {
         // Récupérer le nom d'utilisateur s'il existe déjà
         const savedUsername = userService.getUserName();
@@ -37,6 +38,12 @@ const UserAuthPage: React.FC = () => {
                     // Stocker le type d'activité pour l'afficher
                     const activityType = session.activityType;
                     setSessionName(t(`activities.types.${activityType}`));
+
+                    // Vérifier si c'est une nouvelle session sans administrateur défini
+                    if (session.createdBy === "temp-session-creator" && !session.adminId) {
+                        console.log("Session sans administrateur détectée - premier participant sera admin");
+                        setIsNewSession(true);
+                    }
                 }
             } catch (err) {
                 setError('Erreur lors de la validation de la session.');
@@ -67,8 +74,28 @@ const UserAuthPage: React.FC = () => {
         setError(null);
 
         try {
+            // Vérifier si le nom existe déjà dans la session
+            const session = await sessionsService.getSessionById(sessionId!);
+            if (session && session.participants) {
+                const usernameExists = session.participants.some(
+                    (p: any) => p.username && p.username.toLowerCase() === username.trim().toLowerCase()
+                );
+
+                if (usernameExists) {
+                    setError('Ce nom est déjà utilisé dans cette session. Veuillez en choisir un autre.');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
             // Enregistrer le nom d'utilisateur et l'ajouter à la session
-            await userService.setUserNameAndJoinSession(username.trim(), sessionId);
+            const userId = await userService.setUserNameAndJoinSession(username.trim(), sessionId);
+
+            // Si c'est une nouvelle session sans admin, définir cet utilisateur comme admin
+            if (isNewSession) {
+                console.log(`Définition de l'utilisateur "${username.trim()}" comme administrateur de la session`);
+                await sessionsService.updateSessionAdmin(sessionId!, username.trim());
+            }
 
             // Rediriger vers la session
             navigate(`/session/${sessionId}`);
@@ -98,6 +125,12 @@ const UserAuthPage: React.FC = () => {
                     <p className="text-center text-blue-100 mt-2">
                         {t('auth.activityType')}: {sessionName}
                     </p>
+                )}
+                {isNewSession && (
+                    <div className="mt-2 rounded bg-green-600 p-2 text-white text-center">
+                        <p className="font-semibold">Premier participant</p>
+                        <p className="text-sm">Vous serez automatiquement administrateur de cette session</p>
+                    </div>
                 )}
             </div>
 

@@ -37,7 +37,8 @@ export interface Session {
     id: string;
     activityType: ActivityType;
     status: SessionStatus;
-    createdBy: string;
+    createdBy: string;   // Garde une trace historique de qui a créé la session initialement
+    adminId: string;     // Identifie explicitement qui est l'administrateur actuel
     createdAt: Date;
     duration?: number;
     endTime?: Date;
@@ -53,6 +54,9 @@ export interface Activity {
     createdAt: Date;
     startedAt?: Date;
     completedAt?: Date;
+    visibleToAll: boolean; // Indique si l'activité est visible pour tous les participants
+    launched: boolean; // Indique si l'activité a été lancée par l'admin
+    addedBy: string; // Nom d'utilisateur de l'admin qui a ajouté l'activité
 }
 
 export interface Card {

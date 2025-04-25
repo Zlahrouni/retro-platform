@@ -1,5 +1,5 @@
 // src/components/home/HomePage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { sessionsService } from '../services/firebaseService';
@@ -8,15 +8,16 @@ import HomeBottomSection from '../components/home/HomeBottomSection';
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const [isCreating, setIsCreating] = React.useState(false);
+    const [isCreating, setIsCreating] = useState(false);
 
     const handleCreateSession = async () => {
         try {
             setIsCreating(true);
 
             // Créer une session avec le type par défaut 'madSadGlad'
-            // Nous n'avons pas besoin de nom d'utilisateur pour l'instant
-            const sessionId = await sessionsService.createSession('madSadGlad', 'temp-user');
+            // Nous utilisons "temp-session-creator" pour garder le flux de redirection
+            // vers la page d'authentification
+            const sessionId = await sessionsService.createSessionWithTemporaryAdmin('madSadGlad');
 
             // Rediriger vers la page de saisie du nom d'utilisateur avec l'ID de session
             navigate(`/auth/${sessionId}`);

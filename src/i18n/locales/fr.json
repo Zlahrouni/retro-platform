@@ -105,7 +105,19 @@
     "delete": "Supprimer",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette activité ?",
     "addAnotherActivity": "Besoin d'une autre activité pour cette session ?",
-    "noActivitiesStarted": "Aucune activité n'a encore été démarrée"
+    "noActivitiesStarted": "Aucune activité n'a encore été démarrée",
+    "launch": "Lancer",
+    "launched": "Lancée",
+    "notLaunched": "En attente",
+    "inProgress": "En cours",
+    "adminView": "Gestion des activités (vue admin)",
+    "adminInstructions": "En tant qu'admin, vous pouvez ajouter, lancer et supprimer des activités. Les activités ne seront visibles par les participants qu'une fois lancées.",
+    "addActivityInstruction": "Utilisez le bouton \"Ajouter une activité\" pour commencer.",
+    "noActivitiesYet": "Aucune activité n'a encore été ajoutée.",
+    "activeRetro": "Rétro active",
+    "activeRetroDescription": "L'animateur a lancé cette activité. Vous pouvez maintenant participer en ajoutant vos commentaires dans les colonnes ci-dessous.",
+    "adminOnlyVisible": "Visible par vous uniquement",
+    "visibleToAll": "Visible par tous"
   },
   "session": {
     "addCard": "Ajouter une carte",
@@ -151,7 +163,9 @@
     "addAnotherActivity": "Besoin d'une autre activité pour cette session ?",
     "noActivities": "Aucune activité n'a encore été ajoutée à cette session.",
     "noActivitiesYet": "C'est le moment de commencer !",
-    "addFirstActivityHelp": "Ajoutez votre première activité pour démarrer cette session collaborative."
+    "addFirstActivityHelp": "Ajoutez votre première activité pour démarrer cette session collaborative.",
+    "waitingForActivity": "En attente du lancement d'une activité...",
+    "waitingForActivityDescription": "L'animateur de la session est en train de préparer la prochaine activité. Patientez un instant."
   },
   "participants": {
     "title": "Participants",
