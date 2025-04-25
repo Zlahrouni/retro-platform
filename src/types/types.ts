@@ -35,14 +35,14 @@ export interface Participant {
 
 export interface Session {
     id: string;
-    activityType: ActivityType;
+    sessionType?: string;
     status: SessionStatus;
-    createdBy: string;   // Garde une trace historique de qui a créé la session initialement
-    adminId: string;     // Identifie explicitement qui est l'administrateur actuel
+    createdBy: string;
+    adminId: string;
     createdAt: Date;
     duration?: number;
     endTime?: Date;
-    participants?: Participant[]; // Liste des participants
+    participants?: Participant[];
 }
 
 export interface Activity {

@@ -27,7 +27,7 @@ export const useCreateSession = () => {
             }
 
             // Créer la session - la fonction createSession récupère maintenant directement le nom depuis userService
-            const sessionId = await sessionsService.createSession(activityType);
+            const sessionId = await sessionsService.createSession();
 
             // Rediriger vers la page de session
             navigate(`/session/${sessionId}`);

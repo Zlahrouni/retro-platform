@@ -1,4 +1,4 @@
-// src/pages/UserAuthPage.tsx - Gestion d'admin simplifiée
+// src/pages/UserAuthPage.tsx - Version finale sans activityType
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -13,8 +13,8 @@ const UserAuthPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isValidating, setIsValidating] = useState(true);
-    const [sessionName, setSessionName] = useState<string | null>(null);
     const [isNewSession, setIsNewSession] = useState(false);
+    const [isCreatingSession, setIsCreatingSession] = useState(false);
 
     // Récupérer le nom d'utilisateur existant et valider la session
     useEffect(() => {
@@ -24,6 +24,15 @@ const UserAuthPage: React.FC = () => {
             setUsername(savedUsername);
         }
 
+        // Vérifier si nous devons créer une nouvelle session ou rejoindre une session existante
+        if (sessionId === 'new') {
+            // Mode création de session
+            setIsNewSession(true);
+            setIsValidating(false);
+            return;
+        }
+
+        // Mode rejoindre une session existante
         const validateSession = async () => {
             if (!sessionId) {
                 navigate('/');
@@ -35,10 +44,6 @@ const UserAuthPage: React.FC = () => {
                 if (!session) {
                     setError('Cette session n\'existe pas ou a été supprimée.');
                 } else {
-                    // Stocker le type d'activité pour l'afficher
-                    const activityType = session.activityType;
-                    setSessionName(t(`activities.types.${activityType}`));
-
                     // Vérifier si c'est une nouvelle session sans administrateur défini
                     if (session.createdBy === "temp-session-creator" && !session.adminId) {
                         console.log("Session sans administrateur détectée - premier participant sera admin");
@@ -74,6 +79,25 @@ const UserAuthPage: React.FC = () => {
         setError(null);
 
         try {
+            // Stocker le nom d'utilisateur
+            userService.setUserName(username.trim());
+
+            if (sessionId === 'new') {
+                // Il s'agit d'une nouvelle session à créer
+                setIsCreatingSession(true);
+
+                // Créer la session avec l'utilisateur comme administrateur
+                // Plus besoin de spécifier de type d'activité
+                const newSessionId = await sessionsService.createSession();
+
+                // L'utilisateur est déjà ajouté comme participant dans createSession
+
+                // Rediriger vers la nouvelle session
+                navigate(`/session/${newSessionId}`);
+                return;
+            }
+
+            // Rejoindre une session existante
             // Vérifier si le nom existe déjà dans la session
             const session = await sessionsService.getSessionById(sessionId!);
             if (session && session.participants) {
@@ -88,7 +112,7 @@ const UserAuthPage: React.FC = () => {
                 }
             }
 
-            // Enregistrer le nom d'utilisateur et l'ajouter à la session
+            // Ajouter l'utilisateur à la session
             const userId = await userService.setUserNameAndJoinSession(username.trim(), sessionId);
 
             // Si c'est une nouvelle session sans admin, définir cet utilisateur comme admin
@@ -120,16 +144,20 @@ const UserAuthPage: React.FC = () => {
     return (
         <div className="max-w-md mx-auto mt-16 bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
-                <h1 className="text-2xl font-bold text-center">{t('auth.joinSession')}</h1>
-                {sessionName && (
-                    <p className="text-center text-blue-100 mt-2">
-                        {t('auth.activityType')}: {sessionName}
-                    </p>
-                )}
-                {isNewSession && (
+                <h1 className="text-2xl font-bold text-center">
+                    {sessionId === 'new' ? t('createSession.title') : t('auth.joinSession')}
+                </h1>
+
+                {isNewSession && sessionId !== 'new' && (
                     <div className="mt-2 rounded bg-green-600 p-2 text-white text-center">
                         <p className="font-semibold">Premier participant</p>
                         <p className="text-sm">Vous serez automatiquement administrateur de cette session</p>
+                    </div>
+                )}
+                {sessionId === 'new' && (
+                    <div className="mt-2 rounded bg-green-600 p-2 text-white text-center">
+                        <p className="font-semibold">Création de session</p>
+                        <p className="text-sm">Vous serez administrateur de cette nouvelle session</p>
                     </div>
                 )}
             </div>
@@ -173,23 +201,23 @@ const UserAuthPage: React.FC = () => {
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || isCreatingSession}
                         className="w-full py-3 px-4 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center"
                     >
-                        {isLoading ? (
+                        {isLoading || isCreatingSession ? (
                             <>
                                 <svg className="animate-spin h-5 w-5 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                {t('auth.joiningSession')}
+                                {isCreatingSession ? t('home.creatingSession') : t('auth.joiningSession')}
                             </>
                         ) : (
                             <>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
-                                {t('auth.joinButton')}
+                                {sessionId === 'new' ? t('createSession.createButton') : t('auth.joinButton')}
                             </>
                         )}
                     </button>

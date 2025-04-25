@@ -1,30 +1,17 @@
-// src/components/home/HomePage.tsx
-import React, { useState } from 'react';
+// src/pages/HomePage.tsx
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { sessionsService } from '../services/firebaseService';
 import HomeBottomSection from '../components/home/HomeBottomSection';
 
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const [isCreating, setIsCreating] = useState(false);
 
-    const handleCreateSession = async () => {
-        try {
-            setIsCreating(true);
-
-            // Créer une session avec le type par défaut 'madSadGlad'
-            // Nous utilisons "temp-session-creator" pour garder le flux de redirection
-            // vers la page d'authentification
-            const sessionId = await sessionsService.createSessionWithTemporaryAdmin('madSadGlad');
-
-            // Rediriger vers la page de saisie du nom d'utilisateur avec l'ID de session
-            navigate(`/auth/${sessionId}`);
-        } catch (error) {
-            console.error('Erreur lors de la création de la session:', error);
-            setIsCreating(false);
-        }
+    const handleCreateSession = () => {
+        // Au lieu de créer une session, rediriger vers une route spéciale
+        // qui indiquera à UserAuthPage qu'il doit créer une session
+        navigate('/auth/new');
     };
 
     return (
@@ -46,20 +33,9 @@ const HomePage: React.FC = () => {
             <div className="max-w-lg mx-auto">
                 <button
                     onClick={handleCreateSession}
-                    disabled={isCreating}
                     className="w-full block text-center bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 hover:bg-blue-700 hover:shadow-lg"
                 >
-                    {isCreating ? (
-                        <div className="flex items-center justify-center">
-                            <svg className="animate-spin h-5 w-5 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            {t('home.creatingSession')}
-                        </div>
-                    ) : (
-                        t('home.createSession')
-                    )}
+                    {t('home.createSession')}
                 </button>
             </div>
             <HomeBottomSection />

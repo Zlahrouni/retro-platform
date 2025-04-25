@@ -29,7 +29,7 @@ export interface Participant {
 // Gestion des sessions de rétrospective
 export const sessionsService = {
     // Créer une nouvelle session
-    async createSession(activityType: ActivityType): Promise<string> {
+    async createSession(): Promise<string> {
         // Générer un code court pour la session (pour faciliter l'accès)
         const sessionCode = nanoid(6);
 
@@ -42,10 +42,11 @@ export const sessionsService = {
         }
 
         const sessionData: any = {
-            activityType,
+            // Plus de champ activityType
+            sessionType: 'standard', // Valeur générique, utilisée uniquement pour compatibilité
             status: 'open' as SessionStatus,
-            createdBy: currentUsername, // Utiliser le vrai nom d'utilisateur
-            adminId: currentUsername,   // Champ explicite pour l'administrateur
+            createdBy: currentUsername,
+            adminId: currentUsername,
             createdAt: serverTimestamp(),
             code: sessionCode,
             participants: [] // Initialiser un tableau vide de participants
@@ -232,7 +233,6 @@ export const sessionsService = {
 
                 return {
                     id: docSnap.id,
-                    activityType: data.activityType,
                     status: data.status || 'open',
                     createdBy: data.createdBy || 'Unknown',
                     adminId: data.adminId || data.createdBy || 'Unknown', // Ajouter adminId
@@ -294,7 +294,6 @@ export const sessionsService = {
 
             return {
                 id: docSnap.id,
-                activityType: data.activityType,
                 status: data.status,
                 createdBy: data.createdBy,
                 adminId: data.adminId || data.createdBy,
@@ -306,7 +305,7 @@ export const sessionsService = {
     },
 
     async createSessionWithTemporaryAdmin(activityType: ActivityType): Promise<string> {
-        // Générer un code court pour la session (pour faciliter l'accès)
+        // Générer un code court pour la session
         const sessionCode = nanoid(6);
 
         const sessionData: any = {
@@ -421,7 +420,6 @@ export const sessionsService = {
 
                             const session: Session = {
                                 id: docSnap.id,
-                                activityType: data.activityType,
                                 status: data.status || 'open',
                                 createdBy: data.createdBy || 'Unknown',
                                 adminId: data.adminId || data.createdBy || 'Unknown', // Ajouter adminId
