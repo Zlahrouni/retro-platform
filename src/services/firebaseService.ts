@@ -235,6 +235,7 @@ export const sessionsService = {
                     activityType: data.activityType,
                     status: data.status || 'open',
                     createdBy: data.createdBy || 'Unknown',
+                    adminId: data.adminId || data.createdBy || 'Unknown', // Ajouter adminId
                     createdAt: createdAt,
                     participants: data.participants || []
                 };
@@ -256,7 +257,7 @@ export const sessionsService = {
             const session = await this.getSessionById(sessionId);
             if (!session) return false;
 
-            // Vérifier d'abord adminId (champ principal), puis createdBy
+            // Vérifier d'abord adminId, puis createdBy
             return (
                 (session.adminId && session.adminId === username) ||
                 (session.createdBy === username && session.createdBy !== "temp-session-creator")
@@ -296,6 +297,7 @@ export const sessionsService = {
                 activityType: data.activityType,
                 status: data.status,
                 createdBy: data.createdBy,
+                adminId: data.adminId || data.createdBy,
                 createdAt: createdAt,
                 participants: data.participants || []
             };
@@ -310,7 +312,7 @@ export const sessionsService = {
         const sessionData: any = {
             activityType,
             status: 'open' as SessionStatus,
-            createdBy: "temp-session-creator",  // Marqueur pour indiquer qu'un admin réel est nécessaire
+            createdBy: "temp-session-creator",
             adminId: null,                     // Sera défini lors de l'authentification du premier utilisateur
             createdAt: serverTimestamp(),
             code: sessionCode,
@@ -422,6 +424,7 @@ export const sessionsService = {
                                 activityType: data.activityType,
                                 status: data.status || 'open',
                                 createdBy: data.createdBy || 'Unknown',
+                                adminId: data.adminId || data.createdBy || 'Unknown', // Ajouter adminId
                                 createdAt: createdAt,
                                 participants: data.participants || []
                             };
