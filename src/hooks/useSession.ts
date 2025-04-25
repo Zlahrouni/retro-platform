@@ -107,6 +107,17 @@ export const useSession = (sessionId?: string) => {
     }, []);
 
     useEffect(() => {
+        if (session) {
+            // Déboguer les données de session reçues
+            console.log("Session mise à jour:", {
+                id: session.id,
+                status: session.status,
+                currentActivityId: session.currentActivityId
+            });
+        }
+    }, [session]);
+
+    useEffect(() => {
         if (!sessionId) {
             setIsLoading(false);
             return;
@@ -297,6 +308,21 @@ export const useSession = (sessionId?: string) => {
         }
     }, []);
 
+    const setCurrentActivity = useCallback(async (activityId: string | null): Promise<boolean> => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId) return false;
+
+        try {
+            return await sessionsService.setCurrentActivity(currentSessionId, activityId);
+        } catch (err) {
+            console.error('Failed to set current activity:', err);
+            if (isMounted.current) {
+                setError("Erreur lors de la définition de l'activité courante");
+            }
+            return false;
+        }
+    }, []);
+
     // Fonction pour fermer une session
     const closeSession = useCallback(async () => {
         const currentSessionId = sessionIdRef.current;
@@ -360,6 +386,7 @@ export const useSession = (sessionId?: string) => {
         pauseSession,
         resumeSession,
         getCardsByType,
-        isSessionCreator
+        isSessionCreator,
+        setCurrentActivity
     };
 };

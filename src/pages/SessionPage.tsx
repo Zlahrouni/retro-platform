@@ -1,4 +1,4 @@
-// src/pages/SessionPage.tsx
+// src/pages/SessionPage.tsx - Version mise à jour
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -37,9 +37,11 @@ const SessionPage: React.FC = () => {
         closeSession,
         pauseSession,
         resumeSession,
-        isSessionCreator
+        isSessionCreator,
+        setCurrentActivity // Nouvelle fonction
     } = useSession(sessionId);
 
+    // Vérifier si l'utilisateur a un nom au chargement
     useEffect(() => {
         if (!userService.hasUserName() && sessionId) {
             // Rediriger vers la page d'authentification si l'utilisateur n'a pas de nom
@@ -48,7 +50,23 @@ const SessionPage: React.FC = () => {
         }
     }, [sessionId, navigate]);
 
-    // Utiliser notre nouveau hook pour les activités
+
+    useEffect(() => {
+        if (session && session.currentActivityId) {
+            console.log(`✅ Redirection détectée vers l'activité: ${session.currentActivityId}`);
+            // Déconnectez temporairement la redirection automatique pour tester
+            console.log(`URL de redirection: /session/${sessionId}/activity/${session.currentActivityId}`);
+
+            // Ajoutez un délai pour s'assurer que les logs apparaissent avant la redirection
+            setTimeout(() => {
+                navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
+            }, 100);
+        } else {
+            console.log("Pas d'activité en cours détectée dans la session:", session);
+        }
+    }, [session, sessionId, navigate]);
+
+    // Utiliser notre hook pour les activités
     const {
         activities: firestoreActivities,
         isLoading: activitiesLoading,
@@ -63,14 +81,6 @@ const SessionPage: React.FC = () => {
     // État combiné de chargement
     const isLoading = sessionLoading || activitiesLoading;
     const error = sessionError || activitiesError;
-
-    // Vérifier si l'utilisateur a un nom au chargement
-    useEffect(() => {
-        if (!userService.hasUserName() && sessionId) {
-            // Rediriger vers la page d'authentification si l'utilisateur n'a pas de nom
-            navigate(`/auth/${sessionId}`);
-        }
-    }, [sessionId, navigate]);
 
     // Effet pour les tentatives de reconnexion
     useEffect(() => {
@@ -143,11 +153,27 @@ const SessionPage: React.FC = () => {
         }
     }, [addActivity]);
 
+    // MISE À JOUR: Fonction pour lancer une activité et la définir comme activité courante
     const handleLaunchActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;
 
-        await launchActivity(activityId);
-    }, [isSessionCreator, launchActivity]);
+        try {
+            console.log(`Lancement de l'activité ${activityId}`);
+
+            // Lancer l'activité
+            const success = await launchActivity(activityId);
+
+            if (success) {
+                // Définir cette activité comme l'activité courante de la session
+                console.log(`Définition de l'activité ${activityId} comme activité courante`);
+                await setCurrentActivity(activityId);
+
+                // La redirection se fera via l'effet useEffect qui surveille session.currentActivityId
+            }
+        } catch (err) {
+            console.error("Erreur lors du lancement de l'activité:", err);
+        }
+    }, [isSessionCreator, launchActivity, setCurrentActivity]);
 
     const handleDeleteActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;
@@ -156,7 +182,6 @@ const SessionPage: React.FC = () => {
             await deleteActivity(activityId);
         }
     }, [isSessionCreator, deleteActivity, t]);
-
 
     // Fonctions de rendu conditionnelles
     const renderLoading = () => (

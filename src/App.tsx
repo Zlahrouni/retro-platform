@@ -9,6 +9,7 @@ import SessionPage from './pages/SessionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import NavBar from './components/layout/NavBar';
 import ErrorBoundary from "./components/commons/ErrorBoundary";
+import ActivityPage from "./pages/ActivityPage";
 
 function App() {
   // @ts-ignore
@@ -37,6 +38,22 @@ function App() {
                     </div>
                   }>
                     <SessionPage />
+                  </ErrorBoundary>
+                } />
+                {/* Nouvelle route pour la page d'activité */}
+                <Route path="/session/:sessionId/activity/:activityId" element={
+                  <ErrorBoundary fallback={
+                    <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">
+                      <p>Une erreur est survenue lors du chargement de l'activité.</p>
+                      <button
+                          onClick={() => window.location.href = '/'}
+                          className="mt-4 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition-colors"
+                      >
+                        Retour à l'accueil
+                      </button>
+                    </div>
+                  }>
+                    <ActivityPage />
                   </ErrorBoundary>
                 } />
                 <Route path="/404" element={<NotFoundPage />} />

@@ -43,8 +43,8 @@ export interface Session {
     duration?: number;
     endTime?: Date;
     participants?: Participant[];
+    currentActivityId?: string;
 }
-
 export interface Activity {
     id: string;
     sessionId: string;

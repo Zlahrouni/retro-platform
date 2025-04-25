@@ -103,10 +103,18 @@ export const useActivities = (sessionId?: string, isAdmin: boolean = false) => {
     }, []);
 
     // Lancer une activité
-    const launchActivity = useCallback(async (activityId: string): Promise<boolean> => {
+    const launchActivity = useCallback(async (activityId: string, setSessionActivity?: (id: string) => Promise<boolean>): Promise<boolean> => {
         try {
             console.log(`Lancement de l'activité ${activityId}`);
-            return await activitiesService.launchActivity(activityId);
+            const success = await activitiesService.launchActivity(activityId);
+
+            // Si le lancement a réussi et qu'on a une fonction pour définir l'activité courante
+            if (success && setSessionActivity) {
+                console.log(`Définition de l'activité ${activityId} comme activité courante`);
+                await setSessionActivity(activityId);
+            }
+
+            return success;
         } catch (err) {
             console.error("Erreur lors du lancement d'une activité:", err);
             if (isMounted.current) {

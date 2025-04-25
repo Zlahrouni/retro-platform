@@ -63,6 +63,23 @@ export const sessionsService = {
         return docRef.id;
     },
 
+    async setCurrentActivity(sessionId: string, activityId: string | null): Promise<boolean> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour définir l'activité courante");
+            return false;
+        }
+
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+            await updateDoc(sessionRef, { currentActivityId: activityId });
+            console.log(`Activité courante définie pour la session ${sessionId}: ${activityId}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la définition de l'activité courante:", error);
+            return false;
+        }
+    },
+
     async addParticipant(sessionId: string, username: string): Promise<string> {
         if (!sessionId || !username.trim()) {
             throw new Error("SessionId et username requis pour ajouter un participant");
@@ -421,7 +438,7 @@ export const sessionsService = {
                                 id: docSnap.id,
                                 status: data.status || 'open',
                                 createdBy: data.createdBy || 'Unknown',
-                                adminId: data.adminId || data.createdBy || 'Unknown', // Ajouter adminId
+                                adminId: data.adminId || data.createdBy || 'Unknown',
                                 createdAt: createdAt,
                                 participants: data.participants || []
                             };
