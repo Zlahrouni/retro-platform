@@ -312,10 +312,10 @@ export const sessionsService = {
             activityType,
             status: 'open' as SessionStatus,
             createdBy: "temp-session-creator",
-            adminId: null,                     // Sera défini lors de l'authentification du premier utilisateur
+            adminId: null,
             createdAt: serverTimestamp(),
             code: sessionCode,
-            participants: [] // Initialiser un tableau vide de participants
+            participants: []
         };
 
         console.log("Création d'une session avec administrateur temporaire");
@@ -336,10 +336,9 @@ export const sessionsService = {
             const sessionRef = doc(db, 'sessions', sessionId);
 
             // Mise à jour des deux champs pour assurer la compatibilité avec le code existant
-            // À terme, on pourrait simplifier en n'utilisant qu'un seul champ
             await updateDoc(sessionRef, {
-                adminId: username.trim(),     // Champ principal d'identification de l'admin
-                createdBy: username.trim()    // Maintenu pour compatibilité avec le code existant
+                adminId: username.trim(),
+                createdBy: username.trim()
             });
 
             console.log(`Administrateur de la session ${sessionId} défini: ${username}`);

@@ -1,6 +1,4 @@
 // src/utils/dateUtils.ts
-import { Timestamp } from 'firebase/firestore';
-
 /**
  * Convertit une valeur de date (Date, Timestamp Firebase, string ou number) en objet Date JavaScript
  * @param dateValue - La valeur à convertir en Date
