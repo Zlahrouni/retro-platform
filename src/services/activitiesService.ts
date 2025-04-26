@@ -61,7 +61,6 @@ export const activitiesService = {
 
         try {
             const docRef = await addDoc(collection(db, 'activities'), activityData);
-            console.log(`Activité ajoutée avec succès, ID: ${docRef.id}`);
             return docRef.id;
         } catch (error) {
             console.error("Erreur lors de l'ajout de l'activité:", error);
@@ -106,7 +105,6 @@ export const activitiesService = {
                 status: 'completed' as ActivityStatus,
                 completedAt: serverTimestamp()
             });
-
             console.log(`Activité terminée avec succès, ID: ${activityId}`);
             return true;
         } catch (error) {

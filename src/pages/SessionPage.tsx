@@ -1,4 +1,4 @@
-// src/pages/SessionPage.tsx - Version mise à jour avec la correction
+// src/pages/SessionPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -29,6 +29,9 @@ const SessionPage: React.FC = () => {
     const [showIceBreakerModal, setShowIceBreakerModal] = useState(false);
     const [showRetroModal, setShowRetroModal] = useState(false);
 
+    // Debug state to track if we're already handling a navigation
+    const [isNavigating, setIsNavigating] = useState(false);
+
     // Utiliser notre hook personnalisé pour la session
     const {
         session,
@@ -41,33 +44,9 @@ const SessionPage: React.FC = () => {
         setCurrentActivity // Fonction pour mettre à jour l'activité courante
     } = useSession(sessionId);
 
-    // Vérifier si l'utilisateur a un nom au chargement
-    useEffect(() => {
-        if (!userService.hasUserName() && sessionId) {
-            // Rediriger vers la page d'authentification si l'utilisateur n'a pas de nom
-            console.log("Redirection vers la page d'authentification: utilisateur sans nom");
-            navigate(`/auth/${sessionId}`);
-        }
-    }, [sessionId, navigate]);
-
-    // Effet pour rediriger si une activité courante est détectée
-    useEffect(() => {
-        if (session && session.currentActivityId) {
-            console.log(`✅ Redirection vers l'activité: ${session.currentActivityId}`);
-
-            // Ajouter un délai pour s'assurer que les logs apparaissent avant la redirection
-            const redirectTimeout = setTimeout(() => {
-                navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
-            }, 100);
-
-            // Nettoyer le timeout si le composant est démonté
-            return () => clearTimeout(redirectTimeout);
-        }
-    }, [session, sessionId, navigate]);
-
     // Utiliser notre hook pour les activités
     const {
-        activities: firestoreActivities,
+        activities,
         isLoading: activitiesLoading,
         error: activitiesError,
         addActivity,
@@ -81,11 +60,79 @@ const SessionPage: React.FC = () => {
     const isLoading = sessionLoading || activitiesLoading;
     const error = sessionError || activitiesError;
 
+    // Vérifier si l'utilisateur a un nom au chargement
+    useEffect(() => {
+        if (!userService.hasUserName() && sessionId) {
+            // Rediriger vers la page d'authentification si l'utilisateur n'a pas de nom
+            navigate(`/auth/${sessionId}`);
+        }
+    }, [sessionId, navigate]);
+
+    // Debug session and activities state
+    useEffect(() => {
+        if (session) {
+            console.log("📋 Session state:", {
+                id: session.id,
+                status: session.status,
+                currentActivityId: session.currentActivityId
+            });
+        }
+
+        if (activities.length > 0) {
+            console.log("📋 Activities array:", activities.map(a => ({
+                id: a.id,
+                type: a.type,
+                status: a.status,
+                launched: a.launched
+            })));
+        }
+    }, [session, activities]);
+
+    // Effet pour rediriger si une activité courante est détectée
+    useEffect(() => {
+        // Skip if we're already navigating to avoid loops
+        if (isNavigating || !session || !sessionId) return;
+
+        if (session.currentActivityId) {
+            console.log(`⚠️ Activité courante détectée: ${session.currentActivityId}`);
+
+            // Skip if activities are still loading
+            if (activitiesLoading) {
+                console.log("Activities still loading, waiting...");
+                return;
+            }
+
+            // Check if the activity exists in the activities array
+            const activityExists = activities.some(act => act.id === session.currentActivityId);
+            console.log(`L'activité existe-t-elle dans le tableau des activités: ${activityExists}`);
+
+            // Only proceed with navigation if we found the activity
+            if (activityExists) {
+                setIsNavigating(true);
+
+                // Make sure to use window.location.href for a hard refresh
+                // This helps ensure we get a clean state for the activity page
+                const activityUrl = `/session/${sessionId}/activity/${session.currentActivityId}`;
+                console.log(`✅ Navigation directe vers: ${activityUrl}`);
+
+                window.location.href = activityUrl;
+            } else {
+                console.warn(`Activité ${session.currentActivityId} non trouvée dans les activités disponibles`);
+
+                // If activity not found but we have activities, it might be a data synchronization issue
+                if (activities.length > 0) {
+                    console.log("Activités disponibles:", activities.map(a => a.id).join(", "));
+                } else {
+                    console.log("Aucune activité disponible encore");
+                }
+            }
+        }
+    }, [session, sessionId, activities, activitiesLoading, isNavigating]);
+
     // Effet pour les tentatives de reconnexion
     useEffect(() => {
         if (error && retries < maxRetries) {
             const timer = setTimeout(() => {
-                console.log(`Tentative de reconnexion ${retries + 1}/${maxRetries}...`);
                 setRetries(prev => prev + 1);
                 // Forcer un rechargement de la page pour réessayer
                 window.location.reload();
@@ -152,34 +199,45 @@ const SessionPage: React.FC = () => {
         }
     }, [addActivity]);
 
-    // CORRECTION: Amélioration de la fonction pour lancer une activité
+    // Fonction améliorée pour lancer une activité
     const handleLaunchActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator || !sessionId) return;
 
         try {
-            console.log(`Lancement de l'activité ${activityId}`);
+            console.log(`🔴 LANCEMENT DIRECT DE L'ACTIVITÉ ${activityId}`);
 
-            // Étape 1: Lancer l'activité (la rendre visible pour tous)
+            // Step 1: Launch the activity (make it visible to everyone)
+            console.log(`Étape 1: Lancement de l'activité dans Firebase...`);
             const launchSuccess = await launchActivity(activityId);
 
             if (launchSuccess) {
-                console.log(`Activité ${activityId} lancée avec succès`);
+                console.log(`✅ Activité ${activityId} lancée avec succès`);
 
-                // Étape 2: Définir cette activité comme l'activité courante de la session
-                console.log(`Définition de l'activité ${activityId} comme activité courante de la session ${sessionId}`);
+                // Step 2: Set this activity as the current activity of the session
+                console.log(`Étape 2: Définition de l'activité ${activityId} comme activité courante...`);
                 const updateSuccess = await setCurrentActivity(activityId);
 
                 if (updateSuccess) {
-                    console.log(`Activité courante mise à jour avec succès dans Firebase, redirection imminente...`);
-                    // La redirection se fera automatiquement via l'useEffect qui surveille session.currentActivityId
+                    console.log(`✅ Activité courante mise à jour avec succès dans Firebase`);
+
+                    // DIRECT NAVIGATION: Don't wait for session updates to propagate
+                    console.log(`Étape 3: Navigation directe vers l'activité...`);
+                    setIsNavigating(true);
+
+                    // Use window.location instead of navigate for a full page refresh
+                    // This ensures we get fresh data from Firebase
+                    window.location.href = `/session/${sessionId}/activity/${activityId}`;
                 } else {
-                    console.error("Erreur: Impossible de mettre à jour l'activité courante dans Firebase");
+                    console.error("❌ Erreur: Impossible de mettre à jour l'activité courante dans Firebase");
+                    alert("Erreur lors du lancement de l'activité. Veuillez réessayer.");
                 }
             } else {
-                console.error("Erreur: Impossible de lancer l'activité");
+                console.error("❌ Erreur: Impossible de lancer l'activité");
+                alert("Erreur lors du lancement de l'activité. Veuillez réessayer.");
             }
         } catch (err) {
-            console.error("Erreur lors du lancement de l'activité:", err);
+            console.error("❌ Erreur lors du lancement de l'activité:", err);
+            alert("Une erreur s'est produite lors du lancement de l'activité.");
         }
     }, [isSessionCreator, sessionId, launchActivity, setCurrentActivity]);
 
@@ -226,9 +284,9 @@ const SessionPage: React.FC = () => {
         return (
             <>
                 {/* Liste des activités pour l'admin avec contrôles */}
-                {firestoreActivities.length > 0 ? (
+                {activities.length > 0 ? (
                     <AdminActivityList
-                        activities={firestoreActivities}
+                        activities={activities}
                         onLaunchActivity={handleLaunchActivity}
                         onDeleteActivity={handleDeleteActivity}
                     />
@@ -240,7 +298,7 @@ const SessionPage: React.FC = () => {
                 )}
 
                 {/* Interface pour ajouter une activité si session non fermée */}
-                {session && session.status !== 'closed' && firestoreActivities.length > 0 && (
+                {session && session.status !== 'closed' && activities.length > 0 && (
                     <div className="mt-6 text-center">
                         <button
                             onClick={handleAddActivityClick}

@@ -1,12 +1,7 @@
 // src/services/userService.ts
-import {
-    signInAnonymously,
-    updateProfile,
-    signOut as firebaseSignOut,
-    onAuthStateChanged
-} from 'firebase/auth';
-import { auth } from "../config/firebase";
-import { sessionsService } from './firebaseService';
+import {onAuthStateChanged, signInAnonymously, signOut as firebaseSignOut, updateProfile} from 'firebase/auth';
+import {auth} from "../config/firebase";
+import {sessionsService} from './firebaseService';
 
 export const userService = {
     // Se connecter anonymement (pas besoin de compte)
@@ -45,7 +40,6 @@ export const userService = {
             console.warn("Aucun nom d'utilisateur trouvé dans localStorage");
             return '';
         }
-        console.log("Nom d'utilisateur récupéré depuis localStorage:", savedUsername);
         return savedUsername;
     },
 
@@ -57,15 +51,11 @@ export const userService = {
 
         // Sauvegarder le nom d'utilisateur localement
         this.setUserName(name.trim());
-        console.log(`Nom d'utilisateur '${name.trim()}' sauvegardé localement pour rejoindre la session`);
 
         // Si un sessionId est fourni, ajouter l'utilisateur comme participant
         if (sessionId) {
             try {
-                console.log(`Tentative d'ajout du participant '${name.trim()}' à la session ${sessionId}`);
-                const participantId = await sessionsService.addParticipant(sessionId, name.trim());
-                console.log(`Participant ajouté avec succès, ID: ${participantId}`);
-                return participantId;
+                return await sessionsService.addParticipant(sessionId, name.trim());
             } catch (error) {
                 console.error("Erreur lors de l'ajout à la session:", error);
                 // Continuer malgré l'erreur - au moins le nom est stocké localement
@@ -85,7 +75,6 @@ export const userService = {
 
         const trimmedName = name.trim();
         localStorage.setItem('userName', trimmedName);
-        console.log(`Nom d'utilisateur '${trimmedName}' sauvegardé dans localStorage`);
     },
 
     // Vérifier si l'utilisateur a déjà défini un nom

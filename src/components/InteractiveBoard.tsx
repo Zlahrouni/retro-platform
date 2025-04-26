@@ -1,3 +1,4 @@
+// src/components/InteractiveBoard.tsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityType, ColumnType, ACTIVITY_COLUMNS, Card } from '../types/types';
@@ -37,6 +38,7 @@ const Column: React.FC<ColumnProps> = ({
 
         return `${columnIndex * 150}ms`;
     };
+
     const [isAddingCard, setIsAddingCard] = useState(false);
     const { t } = useTranslation();
 
@@ -45,8 +47,13 @@ const Column: React.FC<ColumnProps> = ({
     };
 
     const handleSubmitCard = async (text: string) => {
-        await onAddCard(text, columnType);
-        setIsAddingCard(false);
+        try {
+            await onAddCard(text, columnType);
+            setIsAddingCard(false);
+        } catch (error) {
+            console.error(`Error adding card to ${columnType} column:`, error);
+            // Keep form open if there's an error
+        }
     };
 
     const handleCancelAddCard = () => {
@@ -167,18 +174,44 @@ const InteractiveBoard: React.FC<BoardProps> = ({
     const { t } = useTranslation();
     const [filteredCards, setFilteredCards] = useState<Record<string, Card[]>>({});
     const [animateBoard, setAnimateBoard] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Log activity information when component mounts
+    useEffect(() => {
+        console.log(`InteractiveBoard: Mounted with activityType: ${activityType}`);
+        console.log(`InteractiveBoard: Cards available: ${cards.length}`);
+    }, [activityType, cards.length]);
 
     // Filter cards by column type when cards array changes
     useEffect(() => {
         if (activityType === 'iceBreaker') return;
 
-        // Group cards by column type
-        const grouped = ACTIVITY_COLUMNS[activityType as ActivityType].reduce((acc, columnType) => {
-            acc[columnType] = cards.filter(card => card.type === columnType);
-            return acc;
-        }, {} as Record<string, Card[]>);
+        // Simple validation to prevent errors
+        if (!activityType || !ACTIVITY_COLUMNS[activityType as ActivityType]) {
+            console.error(`Invalid activity type: ${activityType}`);
+            setError(`Type d'activité non reconnu: ${activityType}`);
+            return;
+        }
 
-        setFilteredCards(grouped);
+        try {
+            console.log(`Filtering ${cards.length} cards for ${activityType} activity`);
+
+            // Group cards by column type
+            const grouped = ACTIVITY_COLUMNS[activityType as ActivityType].reduce((acc, columnType) => {
+                acc[columnType] = cards.filter(card => card.type === columnType);
+                return acc;
+            }, {} as Record<string, Card[]>);
+
+            console.log("Cards grouped by column:", Object.keys(grouped).map(col =>
+                `${col}: ${grouped[col]?.length || 0} cards`
+            ));
+
+            setFilteredCards(grouped);
+            setError(null); // Clear any previous errors
+        } catch (err) {
+            console.error("Error filtering cards:", err);
+            setError("Erreur lors du filtrage des cartes");
+        }
     }, [cards, activityType]);
 
     // Add entrance animation for the board
@@ -195,6 +228,24 @@ const InteractiveBoard: React.FC<BoardProps> = ({
         return (
             <div className="text-center py-8 bg-white rounded-lg shadow-md">
                 <p className="text-lg">{t('activities.iceBreakerDescription')}</p>
+            </div>
+        );
+    }
+
+    // Show error state if activity type is invalid
+    if (error || !ACTIVITY_COLUMNS[activityType as ActivityType]) {
+        return (
+            <div className="bg-red-100 p-6 rounded-lg shadow-md text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="text-xl font-semibold text-red-800 mb-2">Type d'activité non reconnu</h3>
+                <p className="text-red-700 mb-4">
+                    {error || `Le type d'activité "${activityType}" n'est pas pris en charge.`}
+                </p>
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded inline-block">
+                    Informations de débogage: activityType={activityType}, columnsExist={!!ACTIVITY_COLUMNS[activityType as ActivityType]}
+                </div>
             </div>
         );
     }
@@ -219,8 +270,8 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
                     <span className="mr-2">{t(`activities.types.${activityType}`)}</span>
                     <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-            {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
-          </span>
+                        {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
+                    </span>
                 </h2>
 
                 {isReadOnly && (
@@ -242,18 +293,25 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                          backgroundSize: '20px 20px'
                      }}>
                 </div>
-                {columns.map(columnType => (
-                    <div key={columnType} className={`${getColumnWidthClass()} h-96 md:h-auto`}>
-                        <Column
-                            title={t(`activities.columns.${activityType}.${columnType}`)}
-                            columnType={columnType}
-                            cards={filteredCards[columnType] || []}
-                            onAddCard={onAddCard}
-                            isReadOnly={isReadOnly}
-                            isAdmin={isAdmin}
-                        />
+
+                {columns.length === 0 ? (
+                    <div className="w-full flex items-center justify-center p-8 text-gray-500">
+                        <p>Aucune colonne disponible pour ce type d'activité</p>
                     </div>
-                ))}
+                ) : (
+                    columns.map(columnType => (
+                        <div key={columnType} className={`${getColumnWidthClass()} h-96 md:h-auto`}>
+                            <Column
+                                title={t(`activities.columns.${activityType}.${columnType}`)}
+                                columnType={columnType}
+                                cards={filteredCards[columnType] || []}
+                                onAddCard={onAddCard}
+                                isReadOnly={isReadOnly}
+                                isAdmin={isAdmin}
+                            />
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );

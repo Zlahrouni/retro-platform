@@ -46,7 +46,6 @@ const UserAuthPage: React.FC = () => {
                 } else {
                     // Vérifier si c'est une nouvelle session sans administrateur défini
                     if (session.createdBy === "temp-session-creator" && !session.adminId) {
-                        console.log("Session sans administrateur détectée - premier participant sera admin");
                         setIsNewSession(true);
                     }
                 }
@@ -117,7 +116,6 @@ const UserAuthPage: React.FC = () => {
 
             // Si c'est une nouvelle session sans admin, définir cet utilisateur comme admin
             if (isNewSession) {
-                console.log(`Définition de l'utilisateur "${username.trim()}" comme administrateur de la session`);
                 await sessionsService.updateSessionAdmin(sessionId!, username.trim());
             }
 

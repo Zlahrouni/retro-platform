@@ -20,13 +20,10 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ sessionId }) => {
     // S'abonner aux mises à jour des participants
     useEffect(() => {
         if (!sessionId) return;
-
-        console.log('Écoute des participants pour la session:', sessionId);
         setIsLoading(true);
 
         // Charger les participants initiaux
         sessionsService.getSessionParticipants(sessionId).then(initialParticipants => {
-            console.log('Participants initiaux chargés:', initialParticipants);
             if (initialParticipants && initialParticipants.length > 0) {
                 setParticipants(initialParticipants);
             }
@@ -38,8 +35,6 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ sessionId }) => {
 
         // Écouter les mises à jour
         const unsubscribe = sessionsService.onParticipantsUpdate(sessionId, (updatedParticipants) => {
-            console.log('Participants mis à jour (listener):', updatedParticipants);
-
             // Convertir les timestamps en dates si nécessaire
             const processedParticipants = updatedParticipants.map(participant => {
                 // Vérifier si joinedAt est un Timestamp Firebase

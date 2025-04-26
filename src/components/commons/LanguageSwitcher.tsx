@@ -5,16 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 const LanguageSwitcher: React.FC = () => {
     const { currentLanguage, changeLanguage } = useLanguage();
-    const { i18n } = useTranslation();
-
-    // Debug: Log current language state when component mounts and when it changes
-    useEffect(() => {
-        console.log('LanguageSwitcher - Current language:', currentLanguage);
-        console.log('LanguageSwitcher - i18n language:', i18n.language);
-    }, [currentLanguage, i18n.language]);
 
     const handleLanguageChange = (language: SupportedLanguage) => {
-        console.log('Language change requested:', language);
         changeLanguage(language);
     };
 

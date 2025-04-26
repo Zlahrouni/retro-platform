@@ -41,10 +41,13 @@ export const useActivities = (sessionId?: string, isAdmin: boolean = false) => {
         const initializeActivities = async () => {
             try {
                 // Charger les activités initiales
+                console.log(`Tentative de chargement initial des activités pour la session ${sessionId}`);
                 const initialActivities = await activitiesService.getActivitiesBySession(sessionId, isAdmin);
 
                 if (isMounted.current) {
-                    console.log(`${initialActivities.length} activités chargées initialement`);
+                    console.log(`${initialActivities.length} activités chargées initialement:`,
+                        initialActivities.map(a => ({ id: a.id, type: a.type, status: a.status, launched: a.launched })));
+
                     setActivities(initialActivities);
                     setIsLoading(false);
                 }
@@ -55,7 +58,9 @@ export const useActivities = (sessionId?: string, isAdmin: boolean = false) => {
                     isAdmin,
                     (updatedActivities) => {
                         if (isMounted.current) {
-                            console.log(`Mise à jour des activités reçue: ${updatedActivities.length} activités`);
+                            console.log(`Mise à jour des activités reçue: ${updatedActivities.length} activités`,
+                                updatedActivities.map(a => ({ id: a.id, type: a.type, status: a.status, launched: a.launched })));
+
                             setActivities(updatedActivities);
                             setIsLoading(false);
                         }

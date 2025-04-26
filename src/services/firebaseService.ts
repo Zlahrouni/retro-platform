@@ -52,7 +52,6 @@ export const sessionsService = {
             participants: [] // Initialiser un tableau vide de participants
         };
 
-        console.log("Création d'une session avec administrateur:", currentUsername);
 
         // Laisser Firebase générer l'ID
         const docRef = await addDoc(collection(db, 'sessions'), sessionData);
@@ -65,19 +64,24 @@ export const sessionsService = {
 
     async setCurrentActivity(sessionId: string, activityId: string | null): Promise<boolean> {
         if (!sessionId) {
-            console.error("SessionId manquant pour définir l'activité courante");
+            console.error("❌ SessionId manquant pour définir l'activité courante");
             return false;
         }
 
         try {
+            console.log(`📝 Définition de l'activité courante: sessionId=${sessionId}, activityId=${activityId}`);
+
             const sessionRef = doc(db, 'sessions', sessionId);
 
             // Vérifier d'abord si la session existe
             const sessionDoc = await getDoc(sessionRef);
             if (!sessionDoc.exists()) {
-                console.error(`La session ${sessionId} n'existe pas`);
+                console.error(`❌ La session ${sessionId} n'existe pas`);
                 return false;
             }
+
+            // Log the current state of the session before update
+            console.log(`Session avant mise à jour:`, sessionDoc.data());
 
             // Mettre à jour le document avec l'activité courante
             await updateDoc(sessionRef, {
@@ -86,10 +90,21 @@ export const sessionsService = {
                 lastUpdated: serverTimestamp()
             });
 
-            console.log(`Activité courante de la session ${sessionId} définie: ${activityId}`);
-            return true;
+            // Verify the update was successful by reading back the data
+            const updatedSessionDoc = await getDoc(sessionRef);
+            const updatedData = updatedSessionDoc.data();
+
+            console.log(`Session après mise à jour:`, updatedData);
+
+            if (updatedData?.currentActivityId === activityId) {
+                console.log(`✅ Activité courante de la session ${sessionId} définie: ${activityId}`);
+                return true;
+            } else {
+                console.error(`❌ Échec de la mise à jour: currentActivityId = ${updatedData?.currentActivityId}, expected = ${activityId}`);
+                return false;
+            }
         } catch (error) {
-            console.error("Erreur lors de la définition de l'activité courante:", error);
+            console.error("❌ Erreur lors de la définition de l'activité courante:", error);
             return false;
         }
     },
@@ -138,8 +153,6 @@ export const sessionsService = {
                 joinedAt: new Date().toISOString(), // Utiliser une chaîne ISO pour éviter des problèmes de sérialisation
                 status: 'online'
             };
-
-            console.log(`Ajout du participant ${username} (${participantId}) à la session ${sessionId}`);
 
             // Ajouter le nouveau participant
             const updatedParticipants = [...currentParticipants, participantData];
@@ -434,7 +447,6 @@ export const sessionsService = {
                 { includeMetadataChanges: true }, // Cette option aide à détecter les changements offline/online
                 // Succès
                 (docSnap) => {
-                    console.log("Mise à jour reçue pour la session:", sessionId, "existe:", docSnap.exists());
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         try {
@@ -582,9 +594,6 @@ export const cardsService = {
             callback([]);
             return () => {}; // Retourner une fonction de nettoyage vide
         }
-
-        console.log("Initialisation de l'écoute des cartes pour la session:", sessionId);
-
         try {
             const q = query(
                 collection(db, 'cards'),
@@ -595,9 +604,6 @@ export const cardsService = {
             return onSnapshot(q,
                 // Succès
                 (querySnapshot) => {
-                    console.log("Mise à jour reçue avec", querySnapshot.docs.length, "documents");
-                    console.log("Documents IDs:", querySnapshot.docs.map(doc => doc.id));
-
                     // Code existant pour traiter les documents
                     const cards = querySnapshot.docs.map(doc => {
                         const data = doc.data();
@@ -624,7 +630,6 @@ export const cardsService = {
                         };
                     });
 
-                    console.log("Cartes traitées et envoyées:", cards.length);
                     callback(cards);
                 },
                 // Erreur
@@ -648,7 +653,6 @@ export const cardsService = {
 
         try {
             await deleteDoc(doc(db, 'cards', cardId));
-            console.log("Carte supprimée avec succès:", cardId);
         } catch (error) {
             console.error("Erreur lors de la suppression de la carte:", error);
             throw error;

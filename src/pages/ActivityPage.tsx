@@ -16,10 +16,13 @@ const ActivityPage: React.FC = () => {
     const { t } = useTranslation();
     const { sessionId, activityId } = useParams<{ sessionId: string, activityId: string }>();
     const navigate = useNavigate();
+    const [directAccess, setDirectAccess] = useState(true);
 
     // States
     const [showShareMessage, setShowShareMessage] = useState(false);
     const [currentActivity, setCurrentActivity] = useState<ActivityData | null>(null);
+    const [loadingAttempts, setLoadingAttempts] = useState(0);
+    const maxLoadingAttempts = 5;
 
     // Get session data
     const {
@@ -47,35 +50,104 @@ const ActivityPage: React.FC = () => {
     const isLoading = sessionLoading || activitiesLoading;
     const error = sessionError || activitiesError;
 
+    useEffect(() => {
+        // This is for direct access to the activity page (not through redirection)
+        if (directAccess && activityId && !currentActivity && !isLoading) {
+            console.log(`⚠️ Direct access detected to activity ${activityId}`);
+
+            // Try to find the activity in the activities array
+            const activity = activities.find(act => act.id === activityId);
+
+            if (activity) {
+                console.log(`✅ Activity found on direct access:`, activity);
+                setCurrentActivity(activity);
+                setDirectAccess(false); // Reset the flag
+            } else if (activities.length > 0) {
+                console.log(`❌ Activity ${activityId} not found in ${activities.length} activities`);
+
+                // If we have activities but this one isn't found, redirect to session
+                if (loadingAttempts >= 2) {
+                    console.log(`Redirecting to session after ${loadingAttempts} attempts`);
+                    navigate(`/session/${sessionId}`);
+                } else {
+                    // Increment the counter for the next attempt
+                    setLoadingAttempts(prev => prev + 1);
+                }
+            }
+        }
+    }, [directAccess, activityId, currentActivity, activities, isLoading, sessionId, navigate, loadingAttempts]);
+
     // Check for username
     useEffect(() => {
         if (!userService.hasUserName() && sessionId) {
+            console.log("Redirection: User has no name");
             navigate(`/auth/${sessionId}`);
         }
     }, [sessionId, navigate]);
 
+    // Log activity information when component mounts
+    useEffect(() => {
+        console.log(`ActivityPage: Mounted with sessionId: ${sessionId}, activityId: ${activityId}`);
+
+        if (activities.length > 0) {
+            console.log(`Activities loaded: ${activities.length}`);
+            console.log("Activity IDs:", activities.map(a => a.id).join(", "));
+        } else {
+            console.log("No activities loaded yet");
+        }
+    }, [sessionId, activityId, activities]);
+
     // Get current activity from activities list
     useEffect(() => {
+        console.log(`Looking for activity ${activityId} in ${activities.length} activities`);
+
         if (activities.length > 0 && activityId) {
             const activity = activities.find(act => act.id === activityId);
+
             if (activity) {
+                console.log(`Activity found:`, {
+                    id: activity.id,
+                    type: activity.type,
+                    status: activity.status
+                });
                 setCurrentActivity(activity);
+                setLoadingAttempts(0); // Reset attempt counter when activity is found
             } else {
-                // Redirect if activity not found
-                navigate(`/session/${sessionId}`);
+                console.error(`Activity ${activityId} not found in activities array`);
+
+                // Increment loading attempts
+                setLoadingAttempts(prev => prev + 1);
             }
+        } else if (activities.length === 0 && activityId && !activitiesLoading) {
+            // Increment loading attempts if activities are empty
+            setLoadingAttempts(prev => prev + 1);
         }
-    }, [activities, activityId, sessionId, navigate]);
+    }, [activities, activityId, activitiesLoading]);
+
+    // Handle loading attempts timeout
+    useEffect(() => {
+        if (loadingAttempts >= maxLoadingAttempts && !currentActivity) {
+            console.error(`Failed to find activity after ${maxLoadingAttempts} attempts`);
+            console.log("Redirecting to session page");
+            navigate(`/session/${sessionId}`);
+        }
+    }, [loadingAttempts, currentActivity, sessionId, navigate, maxLoadingAttempts]);
 
     // Check if current activity still matches
     useEffect(() => {
-        if (session && session.currentActivityId !== activityId) {
-            if (session.currentActivityId) {
-                // Redirect to new activity
-                navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
-            } else {
-                // Redirect to session page if no active activity
-                navigate(`/session/${sessionId}`);
+        if (session) {
+            console.log(`Current activity in session: ${session.currentActivityId}, URL activityId: ${activityId}`);
+
+            if (session.currentActivityId !== activityId) {
+                if (session.currentActivityId) {
+                    // Redirect to new activity
+                    console.log(`Redirecting to new activity: ${session.currentActivityId}`);
+                    navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
+                } else {
+                    // Redirect to session page if no active activity
+                    console.log("No current activity in session, redirecting to session page");
+                    navigate(`/session/${sessionId}`);
+                }
             }
         }
     }, [session, sessionId, activityId, navigate]);
@@ -83,6 +155,7 @@ const ActivityPage: React.FC = () => {
     // Handle card addition
     const handleAddCard = async (text: string, columnType: ColumnType) => {
         try {
+            console.log(`Adding card to ${columnType} column: "${text.substring(0, 20)}..."`);
             await addCard(text, columnType);
         } catch (error) {
             console.error("Error adding card:", error);
@@ -91,12 +164,28 @@ const ActivityPage: React.FC = () => {
 
     // Complete activity function
     const handleCompleteActivity = async () => {
-        if (activityId && isSessionCreator) {
-            await completeActivity(activityId);
-            // Reset currentActivityId in the session
-            await setSessionCurrentActivity(null);
-            // Redirect to session page
-            navigate(`/session/${sessionId}`);
+        if (!activityId || !isSessionCreator) return;
+
+        try {
+            console.log(`Completing activity ${activityId}`);
+
+            // Step 1: Complete the activity in Firebase
+            const success = await completeActivity(activityId);
+
+            if (success) {
+                console.log("Activity completed successfully");
+
+                // Step 2: Reset currentActivityId in the session
+                await setSessionCurrentActivity(null);
+
+                // Step 3: Redirect to session page
+                console.log("Redirecting to session page");
+                navigate(`/session/${sessionId}`);
+            } else {
+                console.error("Failed to complete activity");
+            }
+        } catch (error) {
+            console.error("Error completing activity:", error);
         }
     };
 
@@ -110,12 +199,17 @@ const ActivityPage: React.FC = () => {
     };
 
     // Loading state
-    if (isLoading) {
+    if (isLoading || (!currentActivity && loadingAttempts < maxLoadingAttempts)) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
                     <p className="mt-4 text-gray-600">{t('general.loading')}</p>
+                    {loadingAttempts > 0 && (
+                        <p className="mt-2 text-sm text-gray-500">
+                            Tentative {loadingAttempts}/{maxLoadingAttempts}...
+                        </p>
+                    )}
                 </div>
             </div>
         );

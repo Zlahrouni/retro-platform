@@ -85,14 +85,6 @@ export const useSession = (sessionId?: string) => {
             }
 
             setIsSessionCreator(isAdmin);
-
-            // Pour le débogage
-            console.log('Vérification admin:', {
-                userName,
-                adminId: session.adminId,
-                createdBy: session.createdBy,
-                isAdmin
-            });
         }
     }, [session]);
 
@@ -123,7 +115,6 @@ export const useSession = (sessionId?: string) => {
             return;
         }
 
-        console.log("Initialisation de la session:", sessionId);
         setIsLoading(true);
         setError(null);
 
@@ -160,7 +151,6 @@ export const useSession = (sessionId?: string) => {
                     const initialCards = await cardsService.getCardsBySession(sessionId);
 
                     if (isMounted.current) {
-                        console.log("Cartes initiales chargées:", initialCards.length);
                         setCards(initialCards);
                     }
                 } catch (cardsError) {
@@ -198,7 +188,6 @@ export const useSession = (sessionId?: string) => {
                         (updatedCards) => {
                             if (!isMounted.current) return;
 
-                            console.log("Mise à jour des cartes reçue:", updatedCards.length);
                             setCards(updatedCards);
                         }
                     );
@@ -220,7 +209,6 @@ export const useSession = (sessionId?: string) => {
 
         // Nettoyer les abonnements lorsque le composant est démonté
         return () => {
-            console.log("Nettoyage des listeners pour la session:", sessionId);
             if (unsubscribeSession) {
                 try {
                     unsubscribeSession();
