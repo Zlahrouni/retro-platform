@@ -310,12 +310,25 @@ export const useSession = (sessionId?: string) => {
 
     const setCurrentActivity = useCallback(async (activityId: string | null): Promise<boolean> => {
         const currentSessionId = sessionIdRef.current;
-        if (!currentSessionId) return false;
+        if (!currentSessionId) {
+            console.error("Impossible de définir l'activité courante: sessionId manquant");
+            return false;
+        }
 
         try {
-            return await sessionsService.setCurrentActivity(currentSessionId, activityId);
+            console.log(`Tentative de définir l'activité courante ${activityId} pour la session ${currentSessionId}`);
+            // Appeler la fonction du service pour mettre à jour l'activité courante dans Firebase
+            const success = await sessionsService.setCurrentActivity(currentSessionId, activityId);
+
+            if (success) {
+                console.log(`Activité courante définie avec succès: ${activityId}`);
+                return true;
+            } else {
+                console.error(`Échec de la définition de l'activité courante: ${activityId}`);
+                return false;
+            }
         } catch (err) {
-            console.error('Failed to set current activity:', err);
+            console.error('Erreur lors de la définition de l\'activité courante:', err);
             if (isMounted.current) {
                 setError("Erreur lors de la définition de l'activité courante");
             }

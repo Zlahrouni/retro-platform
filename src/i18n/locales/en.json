@@ -5,7 +5,10 @@
     "error": "An error occurred",
     "cancel": "Cancel",
     "backToHome": "Back to Home",
-    "slogan": "Simplify your team retrospectives with a real-time collaborative platform"
+    "slogan": "Simplify your team retrospectives with a real-time collaborative platform",
+    "card": "card",
+    "cards": "cards",
+    "backToSession": "Back to session"
   },
   "home": {
     "title": "Retrospective Platform",
@@ -103,6 +106,7 @@
     },
     "start": "Start",
     "delete": "Delete",
+    "completeActivity": "Complete Activity",
     "confirmDelete": "Are you sure you want to delete this activity?",
     "addAnotherActivity": "Need another activity for this session?",
     "noActivitiesStarted": "No activities have been started yet",

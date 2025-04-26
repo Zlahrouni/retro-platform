@@ -1,4 +1,4 @@
-// src/pages/SessionPage.tsx - Version mise à jour
+// src/pages/SessionPage.tsx - Version mise à jour avec la correction
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -38,7 +38,7 @@ const SessionPage: React.FC = () => {
         pauseSession,
         resumeSession,
         isSessionCreator,
-        setCurrentActivity // Nouvelle fonction
+        setCurrentActivity // Fonction pour mettre à jour l'activité courante
     } = useSession(sessionId);
 
     // Vérifier si l'utilisateur a un nom au chargement
@@ -50,19 +50,18 @@ const SessionPage: React.FC = () => {
         }
     }, [sessionId, navigate]);
 
-
+    // Effet pour rediriger si une activité courante est détectée
     useEffect(() => {
         if (session && session.currentActivityId) {
-            console.log(`✅ Redirection détectée vers l'activité: ${session.currentActivityId}`);
-            // Déconnectez temporairement la redirection automatique pour tester
-            console.log(`URL de redirection: /session/${sessionId}/activity/${session.currentActivityId}`);
+            console.log(`✅ Redirection vers l'activité: ${session.currentActivityId}`);
 
-            // Ajoutez un délai pour s'assurer que les logs apparaissent avant la redirection
-            setTimeout(() => {
+            // Ajouter un délai pour s'assurer que les logs apparaissent avant la redirection
+            const redirectTimeout = setTimeout(() => {
                 navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
             }, 100);
-        } else {
-            console.log("Pas d'activité en cours détectée dans la session:", session);
+
+            // Nettoyer le timeout si le composant est démonté
+            return () => clearTimeout(redirectTimeout);
         }
     }, [session, sessionId, navigate]);
 
@@ -153,27 +152,36 @@ const SessionPage: React.FC = () => {
         }
     }, [addActivity]);
 
-    // MISE À JOUR: Fonction pour lancer une activité et la définir comme activité courante
+    // CORRECTION: Amélioration de la fonction pour lancer une activité
     const handleLaunchActivity = useCallback(async (activityId: string) => {
-        if (!isSessionCreator) return;
+        if (!isSessionCreator || !sessionId) return;
 
         try {
             console.log(`Lancement de l'activité ${activityId}`);
 
-            // Lancer l'activité
-            const success = await launchActivity(activityId);
+            // Étape 1: Lancer l'activité (la rendre visible pour tous)
+            const launchSuccess = await launchActivity(activityId);
 
-            if (success) {
-                // Définir cette activité comme l'activité courante de la session
-                console.log(`Définition de l'activité ${activityId} comme activité courante`);
-                await setCurrentActivity(activityId);
+            if (launchSuccess) {
+                console.log(`Activité ${activityId} lancée avec succès`);
 
-                // La redirection se fera via l'effet useEffect qui surveille session.currentActivityId
+                // Étape 2: Définir cette activité comme l'activité courante de la session
+                console.log(`Définition de l'activité ${activityId} comme activité courante de la session ${sessionId}`);
+                const updateSuccess = await setCurrentActivity(activityId);
+
+                if (updateSuccess) {
+                    console.log(`Activité courante mise à jour avec succès dans Firebase, redirection imminente...`);
+                    // La redirection se fera automatiquement via l'useEffect qui surveille session.currentActivityId
+                } else {
+                    console.error("Erreur: Impossible de mettre à jour l'activité courante dans Firebase");
+                }
+            } else {
+                console.error("Erreur: Impossible de lancer l'activité");
             }
         } catch (err) {
             console.error("Erreur lors du lancement de l'activité:", err);
         }
-    }, [isSessionCreator, launchActivity, setCurrentActivity]);
+    }, [isSessionCreator, sessionId, launchActivity, setCurrentActivity]);
 
     const handleDeleteActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;

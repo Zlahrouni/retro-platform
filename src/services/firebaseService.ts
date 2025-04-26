@@ -71,8 +71,22 @@ export const sessionsService = {
 
         try {
             const sessionRef = doc(db, 'sessions', sessionId);
-            await updateDoc(sessionRef, { currentActivityId: activityId });
-            console.log(`Activité courante définie pour la session ${sessionId}: ${activityId}`);
+
+            // Vérifier d'abord si la session existe
+            const sessionDoc = await getDoc(sessionRef);
+            if (!sessionDoc.exists()) {
+                console.error(`La session ${sessionId} n'existe pas`);
+                return false;
+            }
+
+            // Mettre à jour le document avec l'activité courante
+            await updateDoc(sessionRef, {
+                currentActivityId: activityId,
+                // Ajouter un timestamp pour la dernière mise à jour
+                lastUpdated: serverTimestamp()
+            });
+
+            console.log(`Activité courante de la session ${sessionId} définie: ${activityId}`);
             return true;
         } catch (error) {
             console.error("Erreur lors de la définition de l'activité courante:", error);

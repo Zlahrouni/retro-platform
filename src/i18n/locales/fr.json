@@ -5,7 +5,10 @@
     "error": "Une erreur est survenue",
     "cancel": "Annuler",
     "backToHome": "Retour à l'accueil",
-    "slogan": "Simplifiez vos rétrospectives d'équipe avec une plateforme collaborative en temps réel"
+    "slogan": "Simplifiez vos rétrospectives d'équipe avec une plateforme collaborative en temps réel",
+    "card": "carte",
+    "cards": "cartes",
+    "backToSession": "Retour à la session"
   },
   "home": {
     "title": "Plateforme de Rétrospective",
@@ -103,6 +106,7 @@
     },
     "start": "Démarrer",
     "delete": "Supprimer",
+    "completeActivity": "Terminer l'activité",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette activité ?",
     "addAnotherActivity": "Besoin d'une autre activité pour cette session ?",
     "noActivitiesStarted": "Aucune activité n'a encore été démarrée",

@@ -6,91 +6,101 @@ import { useSession } from '../hooks/useSession';
 import { useActivities } from '../hooks/useActivities';
 import { userService } from '../services/userService';
 import { ActivityData } from '../services/activitiesService';
-import { ActivityType, ACTIVITY_COLUMNS, ColumnType } from '../types/types';
+import { ActivityType, ColumnType } from '../types/types';
 import SessionControls from '../components/session/SessionControls';
 import ParticipantsList from '../components/session/ParticipantsList';
+import SessionStatusBanner from '../components/session/SessionStatusBanner';
+import InteractiveBoard from '../components/InteractiveBoard';
 
 const ActivityPage: React.FC = () => {
     const { t } = useTranslation();
     const { sessionId, activityId } = useParams<{ sessionId: string, activityId: string }>();
     const navigate = useNavigate();
 
-    // États locaux
+    // States
     const [showShareMessage, setShowShareMessage] = useState(false);
     const [currentActivity, setCurrentActivity] = useState<ActivityData | null>(null);
 
-    // Récupérer les données de session
+    // Get session data
     const {
         session,
+        cards,
         isLoading: sessionLoading,
         error: sessionError,
         closeSession,
         pauseSession,
         resumeSession,
         isSessionCreator,
+        addCard,
         setCurrentActivity: setSessionCurrentActivity
     } = useSession(sessionId);
 
-    // Récupérer les activités
+    // Get activities
     const {
         activities,
         isLoading: activitiesLoading,
         error: activitiesError,
-        addActivity,
-        launchActivity,
-        completeActivity,
-        deleteActivity
+        completeActivity
     } = useActivities(sessionId, isSessionCreator);
 
-    // État combiné de chargement
+    // Combined loading state
     const isLoading = sessionLoading || activitiesLoading;
     const error = sessionError || activitiesError;
 
-    // Effet pour vérifier le nom d'utilisateur
+    // Check for username
     useEffect(() => {
         if (!userService.hasUserName() && sessionId) {
             navigate(`/auth/${sessionId}`);
         }
     }, [sessionId, navigate]);
 
-    // Effet pour récupérer l'activité courante
+    // Get current activity from activities list
     useEffect(() => {
         if (activities.length > 0 && activityId) {
             const activity = activities.find(act => act.id === activityId);
             if (activity) {
                 setCurrentActivity(activity);
             } else {
-                // Redirection si l'activité n'est pas trouvée
+                // Redirect if activity not found
                 navigate(`/session/${sessionId}`);
             }
         }
     }, [activities, activityId, sessionId, navigate]);
 
-    // Vérifier que l'activité courante de la session correspond toujours à activityId
+    // Check if current activity still matches
     useEffect(() => {
         if (session && session.currentActivityId !== activityId) {
             if (session.currentActivityId) {
-                // Redirection vers la nouvelle activité
+                // Redirect to new activity
                 navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
             } else {
-                // Redirection vers la page de session si aucune activité n'est active
+                // Redirect to session page if no active activity
                 navigate(`/session/${sessionId}`);
             }
         }
     }, [session, sessionId, activityId, navigate]);
 
-    // Fonction pour terminer l'activité
+    // Handle card addition
+    const handleAddCard = async (text: string, columnType: ColumnType) => {
+        try {
+            await addCard(text, columnType);
+        } catch (error) {
+            console.error("Error adding card:", error);
+        }
+    };
+
+    // Complete activity function
     const handleCompleteActivity = async () => {
         if (activityId && isSessionCreator) {
             await completeActivity(activityId);
-            // Remettre currentActivityId à null dans la session
+            // Reset currentActivityId in the session
             await setSessionCurrentActivity(null);
-            // Redirection vers la page de session
+            // Redirect to session page
             navigate(`/session/${sessionId}`);
         }
     };
 
-    // Fonction pour partager le lien
+    // Share link function
     const handleShareLink = () => {
         const url = window.location.href;
         navigator.clipboard.writeText(url).then(() => {
@@ -99,7 +109,7 @@ const ActivityPage: React.FC = () => {
         });
     };
 
-    // Rendu conditionnel pour le chargement
+    // Loading state
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -111,7 +121,7 @@ const ActivityPage: React.FC = () => {
         );
     }
 
-    // Rendu conditionnel pour les erreurs
+    // Error state
     if (error || !session || !currentActivity) {
         return (
             <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">
@@ -126,30 +136,19 @@ const ActivityPage: React.FC = () => {
         );
     }
 
-    // Fonction pour obtenir le nom d'une activité
-    const getActivityName = (type: ActivityType | 'iceBreaker') => {
-        if (type === 'iceBreaker') return t('activities.iceBreaker');
-        return t(`activities.types.${type}`);
-    };
-
-    // Fonction pour récupérer les colonnes d'une activité
-    const getActivityColumns = (type: ActivityType | 'iceBreaker'): ColumnType[] => {
-        if (type === 'iceBreaker' || !Object.keys(ACTIVITY_COLUMNS).includes(type)) {
-            return [];
-        }
-        return ACTIVITY_COLUMNS[type as ActivityType];
-    };
+    // Determine if cards can be added
+    const isReadOnly = session.status === 'closed' || session.status === 'paused';
 
     return (
         <div className="max-w-6xl mx-auto mt-4 px-4 pb-16">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center flex-wrap">
-                        <span className="mr-3">{getActivityName(currentActivity.type)}</span>
+                        <span className="mr-3">{t(`activities.types.${currentActivity.type}`)}</span>
                         <span className="text-sm text-gray-500 font-normal">#{sessionId}</span>
                     </h1>
 
-                    {/* Badge et nom de l'utilisateur */}
+                    {/* User badges */}
                     <div className="flex items-center mt-2 flex-wrap gap-2">
                         {isSessionCreator && (
                             <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
@@ -165,8 +164,8 @@ const ActivityPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Controls for admin or participants */}
-                <div>
+                <div className="flex flex-wrap gap-2">
+                    {/* Session controls */}
                     <SessionControls
                         isAdmin={isSessionCreator}
                         sessionStatus={session.status}
@@ -176,58 +175,42 @@ const ActivityPage: React.FC = () => {
                         onShare={handleShareLink}
                     />
 
-                    {/* Bouton pour terminer l'activité (admin seulement) */}
+                    {/* Complete activity button (admin only) */}
                     {isSessionCreator && (
                         <button
                             onClick={handleCompleteActivity}
-                            className="ml-2 py-2 px-4 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
+                            className="py-2 px-4 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            Terminer l'activité
+                            {t('activities.completeActivity')}
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Liste des participants */}
+            {/* Session status banner */}
+            {session.status !== 'open' && (
+                <SessionStatusBanner
+                    status={session.status}
+                    isAdmin={isSessionCreator}
+                />
+            )}
+
+            {/* Participants list */}
             {sessionId && <ParticipantsList sessionId={sessionId} />}
 
-            {/* Contenu de l'activité */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold mb-4">
-                    {getActivityName(currentActivity.type)}
-                </h2>
+            {/* Interactive board component */}
+            <InteractiveBoard
+                activityType={currentActivity.type as ActivityType | 'iceBreaker'}
+                cards={cards}
+                onAddCard={handleAddCard}
+                isReadOnly={isReadOnly}
+                isAdmin={isSessionCreator}
+            />
 
-                {/* Ici, vous pouvez afficher les colonnes et les fonctionnalités spécifiques à chaque type d'activité */}
-                {currentActivity.type !== 'iceBreaker' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {getActivityColumns(currentActivity.type).map(column => (
-                            <div key={column} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <h3 className="font-medium mb-3 text-center">
-                                    {t(`activities.columns.${currentActivity.type}.${column}`)}
-                                </h3>
-                                {/* Ici, vous afficherez les cartes et le formulaire d'ajout */}
-                                <p className="text-gray-500 text-center py-4">
-                                    {t('session.noCards')}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-8">
-                        <p className="text-lg">
-                            Ice Breaker: {currentActivity.iceBreakerType === 'funQuestion' ?
-                            t('activities.iceBreakerTypes.funQuestion') :
-                            t('activities.iceBreaker')}
-                        </p>
-                        {/* Contenu spécifique à l'ice breaker */}
-                    </div>
-                )}
-            </div>
-
-            {/* Message de partage */}
+            {/* Share message */}
             {showShareMessage && (
                 <div className="fixed top-4 right-4 bg-green-100 text-green-700 py-2 px-4 rounded shadow-md animate-fadeOut">
                     {t('session.copied')}
