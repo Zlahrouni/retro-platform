@@ -19,6 +19,7 @@ import InteractiveBoard from "../components/InteractiveBoard";
 import { ActivityData } from '../services/activitiesService';
 import ParticipantCircles from "../components/session/ParticipantCircles";
 import ConfirmationModal from '../components/commons/ConfirmationModal';
+import {sessionsService} from "../services/firebaseService";
 
 
 const SessionPage: React.FC = () => {
@@ -249,12 +250,52 @@ const SessionPage: React.FC = () => {
             // Add a loading state to prevent multiple clicks
             setIsLaunching(true);
 
+            // Récupérer les informations sur l'activité à lancer
+            const activityToLaunch = activities.find(act => act.id === activityId);
+
+            if (!activityToLaunch) {
+                throw new Error(`Activité ${activityId} non trouvée`);
+            }
+
+            console.log("Type d'activité à lancer:", activityToLaunch.type,
+                activityToLaunch.type === 'iceBreaker' ? `(${activityToLaunch.iceBreakerType})` : '');
+
             // Step 1: Launch the activity (make it visible to everyone)
             console.log(`Step 1: Launching activity in Firebase...`);
             const launchSuccess = await launchActivity(activityId);
 
             if (launchSuccess) {
                 console.log(`✅ Activity ${activityId} launched successfully`);
+
+                // Étape spéciale pour les ice-breakers: initialisation
+                if (activityToLaunch.type === 'iceBreaker') {
+                    // Initialisation spécifique pour "Question Fun Express"
+                    if (activityToLaunch.iceBreakerType === 'funQuestion') {
+                        console.log("🧊 Initialisation de Question Fun Express...");
+
+                        // Import dynamique pour éviter une dépendance circulaire
+                        const { iceBreakerService } = await import('../services/iceBreakerService');
+
+                        // Récupérer la liste des participants pour l'initialisation
+                        const sessionData = await sessionsService.getSessionById(sessionId);
+                        const participants = sessionData?.participants || [];
+
+                        if (participants.length > 0) {
+                            const initSuccess = await iceBreakerService.initializeQuestionFunExpress(
+                                activityId,
+                                participants
+                            );
+
+                            if (!initSuccess) {
+                                console.error("❌ Échec de l'initialisation de Question Fun Express");
+                            } else {
+                                console.log("✅ Question Fun Express initialisé avec succès");
+                            }
+                        } else {
+                            console.warn("⚠️ Aucun participant trouvé pour initialiser Question Fun Express");
+                        }
+                    }
+                }
 
                 // Step 2: Set this activity as the current activity of the session
                 console.log(`Step 2: Setting activity ${activityId} as current activity...`);
@@ -275,7 +316,7 @@ const SessionPage: React.FC = () => {
         } finally {
             setIsLaunching(false);
         }
-    }, [isSessionCreator, sessionId, launchActivity, setSessionCurrentActivity]);
+    }, [isSessionCreator, sessionId, activities, launchActivity, setSessionCurrentActivity]);
 
     // Fonction pour terminer une activité (remplace la redirection)
     const handleCompleteActivity = useCallback(async () => {
@@ -463,6 +504,9 @@ const SessionPage: React.FC = () => {
                     <div className="flex items-center">
                         <h2 className={`${isFullscreen ? 'text-2xl' : 'text-xl'} font-bold text-gray-800`}>
                             {t(`activities.types.${currentActivity.type}`)}
+                            {currentActivity.type === 'iceBreaker' && currentActivity.iceBreakerType === 'funQuestion' &&
+                                " - Question Fun Express"
+                            }
                         </h2>
                     </div>
                     <div className="flex space-x-2">
@@ -519,6 +563,8 @@ const SessionPage: React.FC = () => {
                         sessionId={sessionId}
                         isFullscreen={isFullscreen}
                         selectedAuthor={selectedUser}
+                        activity={currentActivity}
+                        participants={session?.participants || []}
                     />
                 </div>
             </div>

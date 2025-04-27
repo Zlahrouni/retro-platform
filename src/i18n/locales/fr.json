@@ -200,5 +200,22 @@
   },
   "timer": {
     "minutes": "minutes"
+  },
+  "icebreaker": {
+    "questionFor": "Question pour",
+    "changeQuestion": "Changer la question",
+    "changePlayer": "Changer de joueur",
+    "allPlayersAnswered": "Tour terminé !",
+    "roundComplete": "Tous les joueurs ont répondu à une question.",
+    "startNewRound": "Démarrer un nouveau tour",
+    "restartGame": "Redémarrer le jeu",
+    "funQuestion": {
+      "description": "Un ice-breaker amusant où chaque participant répond à une question ludique à tour de rôle.",
+      "loading": "Chargement des questions...",
+      "error": "Erreur lors du chargement des questions",
+      "nextQuestion": "Question suivante",
+      "participants": "Participants ayant répondu",
+      "remainingParticipants": "Participants restants"
+    }
   }
 }

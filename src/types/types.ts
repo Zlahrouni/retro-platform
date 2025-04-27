@@ -25,6 +25,46 @@ export type SessionStatus = 'open' | 'paused' | 'closed';
 // Types pour le statut d'activité
 export type ActivityStatus = 'pending' | 'active' | 'completed';
 
+export interface IceBreakerActivity {
+    id: string;
+    type: 'iceBreaker';
+    iceBreakerType: IceBreakerType;
+    sessionId: string;
+    createdAt: Date | any;
+    status: 'pending' | 'active' | 'completed';
+    visibleToAll: boolean;
+    launched: boolean;
+}
+
+export interface CurrentTurn {
+    playerId: string;
+    playerName: string;
+    questionId: string;
+    question: {
+        fr: string;
+        en: string;
+    };
+}
+
+export interface Question {
+    id: string;
+    fr: string;
+    en: string;
+}
+
+export interface QuestionFunExpressData {
+    id: string;
+    askedQuestions: string[];  // IDs des questions déjà posées
+    askedPlayers: string[];    // IDs des joueurs ayant déjà répondu
+    currentTurn: CurrentTurn | null;
+    allPlayersAsked?: boolean; // Flag indiquant si tous les joueurs ont été interrogés
+}
+
+export interface IceBreakerTypeData {
+    funQuestion: QuestionFunExpressData;
+    // Autres types à venir...
+}
+
 // Interface pour les participants
 export interface Participant {
     id: string;

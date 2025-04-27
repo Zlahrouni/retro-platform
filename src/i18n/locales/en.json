@@ -200,5 +200,22 @@
   },
   "timer": {
     "minutes": "minutes"
+  },
+  "icebreaker": {
+    "questionFor": "Question for",
+    "changeQuestion": "Change question",
+    "changePlayer": "Change player",
+    "allPlayersAnswered": "Round completed!",
+    "roundComplete": "All players have answered a question.",
+    "startNewRound": "Start a new round",
+    "restartGame": "Restart game",
+    "funQuestion": {
+      "description": "A fun ice-breaker where each participant answers a playful question in turn.",
+      "loading": "Loading questions...",
+      "error": "Error loading questions",
+      "nextQuestion": "Next question",
+      "participants": "Participants who answered",
+      "remainingParticipants": "Remaining participants"
+    }
   }
 }

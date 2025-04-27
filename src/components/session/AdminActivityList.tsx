@@ -161,7 +161,7 @@ const AdminActivityList: React.FC<AdminActivityListProps> = ({
                         {/* Actions pour l'admin */}
                         <div className="border-t pt-3 flex justify-end space-x-2">
                             {/* Bouton Lancer - uniquement pour les activités non lancées */}
-                            {!activity.launched && activity.type !== 'iceBreaker' && (
+                            {!activity.launched && (
                                 <button
                                     onClick={() => onLaunchActivity(activity.id)}
                                     className="px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-blue-600 transition-colors flex items-center"

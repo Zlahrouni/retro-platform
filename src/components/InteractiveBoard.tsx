@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityType, ColumnType, ACTIVITY_COLUMNS, Card } from '../types/types';
 import CardComponent from './cards/CardComponent';
 import AddCardForm from './cards/AddCardForm';
-import ParticipantCircles from './session/ParticipantCircles';
+import {QuestionFunExpress} from "./activities/icebreakers";
 
 interface ColumnProps {
     title: string;
@@ -200,6 +200,8 @@ interface BoardProps {
     sessionId?: string;
     isFullscreen?: boolean;
     selectedAuthor?: string | null;
+    activity?: any;  // Pour les détails de l'activité
+    participants?: any[];  // Pour les participants
 }
 
 const InteractiveBoard: React.FC<BoardProps> = ({
@@ -209,14 +211,17 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                                     isReadOnly,
                                                     isAdmin,
                                                     sessionId = '',
-                                                    isFullscreen = false
+                                                    isFullscreen = false,
+                                                    selectedAuthor,
+                                                    activity,
+                                                    participants = []
                                                 }) => {
     const { t } = useTranslation();
     const [filteredCards, setFilteredCards] = useState<Record<string, Card[]>>({});
     const [animateBoard, setAnimateBoard] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
     const [uniqueAuthors, setUniqueAuthors] = useState<string[]>([]);
+    const [filterAuthor, setFilterAuthor] = useState<string | null>(selectedAuthor || null);
 
     // Extraire les auteurs uniques des cartes
     useEffect(() => {
@@ -226,6 +231,15 @@ const InteractiveBoard: React.FC<BoardProps> = ({
             setUniqueAuthors(authors);
         }
     }, [cards]);
+
+    // Mise à jour du filtre quand selectedAuthor change (prop externe)
+    useEffect(() => {
+        setFilterAuthor(selectedAuthor || null);
+    }, [selectedAuthor]);
+
+    // Spécifique à l'ice breaker
+    // Détecter le type d'ice breaker via activity.iceBreakerType
+    const iceBreakerType = activity?.iceBreakerType || null;
 
     // Log activity information when component mounts
     useEffect(() => {
@@ -276,20 +290,43 @@ const InteractiveBoard: React.FC<BoardProps> = ({
 
     // Gestionnaire pour sélectionner un auteur
     const handleAuthorSelect = (author: string) => {
-        if (selectedAuthor === author) {
+        if (filterAuthor === author) {
             // Si l'auteur est déjà sélectionné, désélectionner
-            setSelectedAuthor(null);
+            setFilterAuthor(null);
         } else {
             // Sinon, sélectionner l'auteur
-            setSelectedAuthor(author);
+            setFilterAuthor(author);
         }
     };
 
-    // Don't render for ice breaker activities
+    // Traitement pour les activités "iceBreaker"
     if (activityType === 'iceBreaker') {
+        // Si c'est une "Question Fun Express"
+        if (iceBreakerType === 'funQuestion') {
+            return (
+                <div className="w-full">
+                    <QuestionFunExpress
+                        sessionId={sessionId}
+                        activityId={activity?.id}
+                        isAdmin={isAdmin}
+                        participants={participants}
+                    />
+                </div>
+            );
+        }
+
+        // Rendu par défaut pour les autres types d'icebreakers (si non reconnu)
         return (
             <div className="text-center py-8 bg-white rounded-lg shadow-md">
-                <p className="text-lg">{t('activities.iceBreakerDescription')}</p>
+                <div className="mb-6">
+                    <div className="w-20 h-20 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                        <span className="text-4xl">🧊</span>
+                    </div>
+                </div>
+                <h2 className="text-xl font-bold mb-4">{t('activities.iceBreaker')}</h2>
+                <p className="text-gray-600 max-w-md mx-auto">
+                    {t('activities.iceBreakerDescription')}
+                </p>
             </div>
         );
     }
@@ -338,11 +375,11 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                             </span>
                         </h2>
 
-                        {selectedAuthor && (
+                        {filterAuthor && (
                             <div className="mt-1 text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded inline-flex items-center">
-                                <span>Filtré par: {selectedAuthor}</span>
+                                <span>Filtré par: {filterAuthor}</span>
                                 <button
-                                    onClick={() => setSelectedAuthor(null)}
+                                    onClick={() => setFilterAuthor(null)}
                                     className="ml-2 text-blue-700 hover:text-blue-900"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -360,7 +397,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 key={author}
                                 onClick={() => handleAuthorSelect(author)}
                                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-full transition-all 
-                                    ${selectedAuthor === author
+                                    ${filterAuthor === author
                                     ? 'bg-blue-500 text-white shadow-md scale-110'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
@@ -369,7 +406,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                     {author.substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="text-sm">{author}</span>
-                                {selectedAuthor === author && (
+                                {filterAuthor === author && (
                                     <span className="w-2 h-2 rounded-full bg-white"></span>
                                 )}
                             </button>
@@ -412,7 +449,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 isReadOnly={isReadOnly}
                                 isAdmin={isAdmin}
                                 sessionId={sessionId}
-                                selectedAuthor={selectedAuthor}
+                                selectedAuthor={filterAuthor}
                             />
                         </div>
                     ))
