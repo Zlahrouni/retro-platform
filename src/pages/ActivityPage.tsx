@@ -1,6 +1,6 @@
 // src/pages/ActivityPage.tsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {useParams, useNavigate, useLocation} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '../hooks/useSession';
 import { useActivities } from '../hooks/useActivities';
@@ -23,6 +23,13 @@ const ActivityPage: React.FC = () => {
     const [currentActivity, setCurrentActivity] = useState<ActivityData | null>(null);
     const [loadingAttempts, setLoadingAttempts] = useState(0);
     const maxLoadingAttempts = 5;
+
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [redirectBackAttempted, setRedirectBackAttempted] = useState(false);
+    const location = useLocation();
+    const fromLaunch = location.state?.fromLaunch;
+    const bypassCheck = location.state?.bypassCheck;
+
 
     // Get session data
     const {
@@ -51,31 +58,44 @@ const ActivityPage: React.FC = () => {
     const error = sessionError || activitiesError;
 
     useEffect(() => {
-        // This is for direct access to the activity page (not through redirection)
-        if (directAccess && activityId && !currentActivity && !isLoading) {
+        if (directAccess && activityId && !currentActivity && !activitiesLoading) {
             console.log(`⚠️ Direct access detected to activity ${activityId}`);
 
-            // Try to find the activity in the activities array
+            // Find the activity in the activities array
             const activity = activities.find(act => act.id === activityId);
 
             if (activity) {
                 console.log(`✅ Activity found on direct access:`, activity);
                 setCurrentActivity(activity);
                 setDirectAccess(false); // Reset the flag
-            } else if (activities.length > 0) {
+                setIsInitialLoading(false);
+
+                // IMPORTANT: If this is a valid activity, make sure it's set as current in session
+                if (session && session.currentActivityId !== activityId && isSessionCreator) {
+                    console.log("Updating session's currentActivityId to match URL");
+                    setSessionCurrentActivity(activityId);
+                }
+            } else if (activities.length > 0 && loadingAttempts >= 2) {
                 console.log(`❌ Activity ${activityId} not found in ${activities.length} activities`);
 
-                // If we have activities but this one isn't found, redirect to session
-                if (loadingAttempts >= 2) {
-                    console.log(`Redirecting to session after ${loadingAttempts} attempts`);
-                    navigate(`/session/${sessionId}`);
+                // Only redirect to session if we've tried multiple times and the current activity is different
+                if (session?.currentActivityId && session.currentActivityId !== activityId) {
+                    console.log(`Session has a different current activity: ${session.currentActivityId}`);
+                    navigate(`/session/${sessionId}/activity/${session.currentActivityId}`, { replace: true });
                 } else {
-                    // Increment the counter for the next attempt
-                    setLoadingAttempts(prev => prev + 1);
+                    console.log(`Redirecting to session after ${loadingAttempts} attempts`);
+                    navigate(`/session/${sessionId}`, { replace: true });
                 }
+            } else {
+                // Increment the counter for the next attempt
+                setLoadingAttempts(prev => prev + 1);
             }
+        } else if (!directAccess || activitiesLoading === false) {
+            // If we're done with direct access or activity loading
+            setIsInitialLoading(false);
         }
-    }, [directAccess, activityId, currentActivity, activities, isLoading, sessionId, navigate, loadingAttempts]);
+    }, [directAccess, activityId, currentActivity, activities, activitiesLoading,
+        sessionId, navigate, loadingAttempts, session, isSessionCreator, setSessionCurrentActivity]);
 
     // Check for username
     useEffect(() => {
@@ -135,22 +155,74 @@ const ActivityPage: React.FC = () => {
 
     // Check if current activity still matches
     useEffect(() => {
-        if (session) {
+        // if redirect already attempted, or if we're bypassing checks
+        if (isInitialLoading || redirectBackAttempted || fromLaunch || bypassCheck) {
+            console.log("Skipping redirect check - initial loading, already attempted, from launch, or bypass flag set");
+            return;
+        }
+
+        // Skip checks if we don't have session data yet
+        if (!session) return;
+
+        // Don't check until we've given Firebase time to update
+        const hasCompleteSyncedData =
+            session &&
+            !sessionLoading &&
+            !activitiesLoading &&
+            activities.length > 0;
+
+        if (!hasCompleteSyncedData) {
+            console.log("Waiting for complete data sync before checking redirects");
+            return;
+        }
+
+        if (session && activityId) {
             console.log(`Current activity in session: ${session.currentActivityId}, URL activityId: ${activityId}`);
 
-            if (session.currentActivityId !== activityId) {
+            // IMPORTANT: Check if activityId is valid (exists in activities list)
+            const activityExists = activities.some(a => a.id === activityId);
+
+            // Only redirect if:
+            // 1. The session has a different currentActivityId than URL
+            // 2. We haven't already attempted a redirect
+            // 3. The current URL activity doesn't exist OR the session has a different currentActivityId
+            if (session.currentActivityId !== activityId &&
+                !redirectBackAttempted &&
+                (!activityExists || session.currentActivityId)) {
+
+                console.log("Redirect condition met - marking redirect as attempted");
+                setRedirectBackAttempted(true);
+
+                // We have another activity to go to
                 if (session.currentActivityId) {
-                    // Redirect to new activity
-                    console.log(`Redirecting to new activity: ${session.currentActivityId}`);
-                    navigate(`/session/${sessionId}/activity/${session.currentActivityId}`);
-                } else {
-                    // Redirect to session page if no active activity
-                    console.log("No current activity in session, redirecting to session page");
-                    navigate(`/session/${sessionId}`);
+                    const newActivityExists = activities.some(a => a.id === session.currentActivityId);
+
+                    if (newActivityExists) {
+                        console.log(`Redirecting to new activity: ${session.currentActivityId}`);
+                        navigate(`/session/${sessionId}/activity/${session.currentActivityId}`, {
+                            replace: true // Use replace to avoid browser history buildup
+                        });
+                        return;
+                    }
                 }
+
+                // If we get here - either the session has no current activity or the activity doesn't exist
+                console.log("No valid current activity in session, waiting before redirecting...");
+
+                // Add a much longer delay to prevent rapid navigation loops
+                setTimeout(() => {
+                    if (!session.currentActivityId) {
+                        console.log("Still no current activity, redirecting to session page");
+                        navigate(`/session/${sessionId}`, { replace: true });
+                    }
+                }, 3000); // Use 3 seconds instead of 1.5
+            } else if (session.currentActivityId === activityId) {
+                // This is good - we're on the right activity page!
+                console.log("URL activity matches session currentActivityId - staying on page");
             }
         }
-    }, [session, sessionId, activityId, navigate]);
+    }, [session, sessionId, activityId, navigate, isInitialLoading, redirectBackAttempted,
+        fromLaunch, activities, sessionLoading, activitiesLoading]);
 
     // Handle card addition
     const handleAddCard = async (text: string, columnType: ColumnType) => {

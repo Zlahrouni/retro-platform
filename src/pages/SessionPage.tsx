@@ -29,8 +29,8 @@ const SessionPage: React.FC = () => {
     const [showIceBreakerModal, setShowIceBreakerModal] = useState(false);
     const [showRetroModal, setShowRetroModal] = useState(false);
 
-    // Debug state to track if we're already handling a navigation
-    const [isNavigating, setIsNavigating] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
+    const [isLaunching, setIsLaunching] = useState(false);
 
     // Utiliser notre hook personnalisé pour la session
     const {
@@ -90,11 +90,11 @@ const SessionPage: React.FC = () => {
 
     // Effet pour rediriger si une activité courante est détectée
     useEffect(() => {
-        // Skip if we're already navigating to avoid loops
-        if (isNavigating || !session || !sessionId) return;
+        // Don't redirect if we're in the middle of launching an activity
+        if (!session || !sessionId || isRedirecting || isLaunching) return;
 
         if (session.currentActivityId) {
-            console.log(`⚠️ Activité courante détectée: ${session.currentActivityId}`);
+            console.log(`⚠️ Current activity detected: ${session.currentActivityId}`);
 
             // Skip if activities are still loading
             if (activitiesLoading) {
@@ -102,32 +102,46 @@ const SessionPage: React.FC = () => {
                 return;
             }
 
-            // Check if the activity exists in the activities array
+            // Make sure we have a synchronized state before redirecting
+            // Only redirect if we have activities data and the current activity exists
             const activityExists = activities.some(act => act.id === session.currentActivityId);
-            console.log(`L'activité existe-t-elle dans le tableau des activités: ${activityExists}`);
 
-            // Only proceed with navigation if we found the activity
-            if (activityExists) {
-                setIsNavigating(true);
+            if (!activityExists) {
+                console.log(`Activity ${session.currentActivityId} not found in activities list, waiting...`);
+                return;
+            }
 
-                // Make sure to use window.location.href for a hard refresh
-                // This helps ensure we get a clean state for the activity page
-                const activityUrl = `/session/${sessionId}/activity/${session.currentActivityId}`;
-                console.log(`✅ Navigation directe vers: ${activityUrl}`);
+            // Prevent multiple redirects
+            setIsRedirecting(true);
 
-                window.location.href = activityUrl;
+            // Check if the activity exists in our activities array
+            const activity = activities.find(act => act.id === session.currentActivityId);
+
+            if (activity) {
+                console.log(`Activity found in activities list:`, {
+                    id: activity.id,
+                    type: activity.type,
+                    status: activity.status
+                });
+
+                console.log(`✅ Redirecting to activity: ${session.currentActivityId}`);
+
+                // Use navigate instead of window.location for better state handling
+                // Add replace: true to avoid browser history buildup
+                navigate(`/session/${sessionId}/activity/${session.currentActivityId}`, {
+                    state: { fromSessionPage: true },
+                    replace: true
+                });
             } else {
-                console.warn(`Activité ${session.currentActivityId} non trouvée dans les activités disponibles`);
+                console.warn(`Activity ${session.currentActivityId} not found in activities list`);
 
-                // If activity not found but we have activities, it might be a data synchronization issue
+                // If we have activities but can't find this one, wait longer and retry
                 if (activities.length > 0) {
-                    console.log("Activités disponibles:", activities.map(a => a.id).join(", "));
-                } else {
-                    console.log("Aucune activité disponible encore");
+                    setTimeout(() => setIsRedirecting(false), 2000);
                 }
             }
         }
-    }, [session, sessionId, activities, activitiesLoading, isNavigating]);
+    }, [session, sessionId, activities, activitiesLoading, navigate, isRedirecting, isLaunching]);
 
     // Effet pour les tentatives de reconnexion
     useEffect(() => {
@@ -204,42 +218,58 @@ const SessionPage: React.FC = () => {
         if (!isSessionCreator || !sessionId) return;
 
         try {
-            console.log(`🔴 LANCEMENT DIRECT DE L'ACTIVITÉ ${activityId}`);
+            console.log(`🔴 LAUNCHING ACTIVITY ${activityId}`);
+
+            // Add a loading state to prevent multiple clicks
+            setIsLaunching(true);
 
             // Step 1: Launch the activity (make it visible to everyone)
-            console.log(`Étape 1: Lancement de l'activité dans Firebase...`);
+            console.log(`Step 1: Launching activity in Firebase...`);
             const launchSuccess = await launchActivity(activityId);
 
             if (launchSuccess) {
-                console.log(`✅ Activité ${activityId} lancée avec succès`);
+                console.log(`✅ Activity ${activityId} launched successfully`);
 
                 // Step 2: Set this activity as the current activity of the session
-                console.log(`Étape 2: Définition de l'activité ${activityId} comme activité courante...`);
+                console.log(`Step 2: Setting activity ${activityId} as current activity...`);
                 const updateSuccess = await setCurrentActivity(activityId);
 
                 if (updateSuccess) {
-                    console.log(`✅ Activité courante mise à jour avec succès dans Firebase`);
+                    console.log(`✅ Current activity updated successfully in Firebase`);
 
-                    // DIRECT NAVIGATION: Don't wait for session updates to propagate
-                    console.log(`Étape 3: Navigation directe vers l'activité...`);
-                    setIsNavigating(true);
+                    // Step 3: Add a small delay to ensure Firebase propagates the changes
+                    await new Promise(resolve => setTimeout(resolve, 800));
 
-                    // Use window.location instead of navigate for a full page refresh
-                    // This ensures we get fresh data from Firebase
-                    window.location.href = `/session/${sessionId}/activity/${activityId}`;
+                    // Step 4: Navigate to activity page
+                    console.log(`Step 3: Navigating to activity...`);
+                    navigate(`/session/${sessionId}/activity/${activityId}`, {
+                        state: { fromLaunch: true },
+                        replace: true
+                    });
                 } else {
-                    console.error("❌ Erreur: Impossible de mettre à jour l'activité courante dans Firebase");
-                    alert("Erreur lors du lancement de l'activité. Veuillez réessayer.");
+                    console.error("❌ Error: Failed to update current activity in Firebase");
+
+                    // Even if setting currentActivity fails, try to navigate anyway
+                    // This is a fallback in case the data was actually updated but verification failed
+                    console.log("Attempting navigation despite currentActivity update error...");
+                    setTimeout(() => {
+                        navigate(`/session/${sessionId}/activity/${activityId}`, {
+                            state: { fromLaunch: true, bypassCheck: true },
+                            replace: true
+                        });
+                    }, 500);
                 }
             } else {
-                console.error("❌ Erreur: Impossible de lancer l'activité");
-                alert("Erreur lors du lancement de l'activité. Veuillez réessayer.");
+                console.error("❌ Error: Failed to launch activity");
+                alert("Error launching activity. Please try again.");
             }
         } catch (err) {
-            console.error("❌ Erreur lors du lancement de l'activité:", err);
-            alert("Une erreur s'est produite lors du lancement de l'activité.");
+            console.error("❌ Error launching activity:", err);
+            alert("An error occurred while launching the activity.");
+        } finally {
+            setIsLaunching(false);
         }
-    }, [isSessionCreator, sessionId, launchActivity, setCurrentActivity]);
+    }, [isSessionCreator, sessionId, launchActivity, setCurrentActivity, navigate]);
 
     const handleDeleteActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;

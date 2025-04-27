@@ -12,6 +12,7 @@ import {
     orderBy,
     serverTimestamp,
     onSnapshot,
+    runTransaction,
     Timestamp,
 } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
@@ -64,50 +65,83 @@ export const sessionsService = {
 
     async setCurrentActivity(sessionId: string, activityId: string | null): Promise<boolean> {
         if (!sessionId) {
-            console.error("❌ SessionId manquant pour définir l'activité courante");
+            console.error("❌ SessionId missing for setting current activity");
             return false;
         }
 
         try {
-            console.log(`📝 Définition de l'activité courante: sessionId=${sessionId}, activityId=${activityId}`);
+            console.log(`📝 Setting current activity: sessionId=${sessionId}, activityId=${activityId}`);
 
             const sessionRef = doc(db, 'sessions', sessionId);
 
-            // Vérifier d'abord si la session existe
+            // Verify the session exists first
             const sessionDoc = await getDoc(sessionRef);
             if (!sessionDoc.exists()) {
-                console.error(`❌ La session ${sessionId} n'existe pas`);
+                console.error(`❌ Session ${sessionId} does not exist`);
                 return false;
             }
 
-            // Log the current state of the session before update
-            console.log(`Session avant mise à jour:`, sessionDoc.data());
+            // Log the current state before update
+            console.log(`Session before update:`, sessionDoc.data());
 
-            // Mettre à jour le document avec l'activité courante
+            // Using simple updateDoc instead of transaction for more reliable updates
             await updateDoc(sessionRef, {
                 currentActivityId: activityId,
-                // Ajouter un timestamp pour la dernière mise à jour
                 lastUpdated: serverTimestamp()
             });
 
-            // Verify the update was successful by reading back the data
+            // Add a small delay before verification
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Verify the update was successful
             const updatedSessionDoc = await getDoc(sessionRef);
             const updatedData = updatedSessionDoc.data();
 
-            console.log(`Session après mise à jour:`, updatedData);
+            console.log(`Session after update:`, updatedData);
 
-            if (updatedData?.currentActivityId === activityId) {
-                console.log(`✅ Activité courante de la session ${sessionId} définie: ${activityId}`);
+            // Verify update was successful
+            const updateSuccessful = updatedData &&
+                ((activityId === null && !updatedData.currentActivityId) ||
+                    (activityId !== null && updatedData.currentActivityId === activityId));
+
+            if (updateSuccessful) {
+                console.log(`✅ Current activity of session ${sessionId} set to: ${activityId}`);
                 return true;
             } else {
-                console.error(`❌ Échec de la mise à jour: currentActivityId = ${updatedData?.currentActivityId}, expected = ${activityId}`);
-                return false;
+                console.error(`❌ Update failed: currentActivityId = ${updatedData?.currentActivityId}, expected = ${activityId}`);
+
+                // If first attempt failed, try one more time
+                console.log("Retrying update...");
+
+                // Second attempt with direct update
+                await updateDoc(sessionRef, {
+                    currentActivityId: activityId,
+                    lastUpdated: serverTimestamp()
+                });
+
+                // Verify second attempt
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const retryDoc = await getDoc(sessionRef);
+                const retryData = retryDoc.data();
+
+                const retrySuccessful = retryData &&
+                    ((activityId === null && !retryData.currentActivityId) ||
+                        (activityId !== null && retryData.currentActivityId === activityId));
+
+                if (retrySuccessful) {
+                    console.log(`✅ Retry successful: Current activity set to: ${activityId}`);
+                    return true;
+                } else {
+                    console.error(`❌ Retry failed: currentActivityId = ${retryData?.currentActivityId}`);
+                    return false;
+                }
             }
         } catch (error) {
-            console.error("❌ Erreur lors de la définition de l'activité courante:", error);
+            console.error("❌ Error setting current activity:", error);
             return false;
         }
     },
+
 
     async addParticipant(sessionId: string, username: string): Promise<string> {
         if (!sessionId || !username.trim()) {
@@ -422,35 +456,23 @@ export const sessionsService = {
     // Écouter les changements sur une session (temps réel)
     onSessionUpdate(sessionId: string, callback: (session: Session | null) => void) {
         if (!sessionId) {
-            console.error("SessionId manquant pour l'écoute");
+            console.error("SessionId missing for listening");
             callback(null);
-            return () => {}; // Retourner une fonction de nettoyage vide
+            return () => {}; // Return empty cleanup function
         }
-
-        // Tenter d'abord de récupérer la session directement
-        this.getSessionById(sessionId)
-            .then(session => {
-                if (session) {
-                    callback(session);
-                }
-            })
-            .catch(error => {
-                console.error("Erreur lors de la récupération initiale de la session:", error);
-            });
 
         try {
             const docRef = doc(db, 'sessions', sessionId);
 
-            // Utiliser onSnapshot avec options pour une meilleure fiabilité
+            // Use onSnapshot with options for better reliability
             return onSnapshot(
                 docRef,
-                { includeMetadataChanges: true }, // Cette option aide à détecter les changements offline/online
-                // Succès
+                { includeMetadataChanges: true }, // This helps detect online/offline changes
                 (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         try {
-                            // Gérer correctement les dates
+                            // Process timestamp correctly
                             let createdAt: Date;
                             if (data.createdAt && typeof data.createdAt.toDate === 'function') {
                                 createdAt = data.createdAt.toDate();
@@ -466,28 +488,31 @@ export const sessionsService = {
                                 createdBy: data.createdBy || 'Unknown',
                                 adminId: data.adminId || data.createdBy || 'Unknown',
                                 createdAt: createdAt,
-                                participants: data.participants || []
+                                participants: data.participants || [],
+                                currentActivityId: data.currentActivityId || null,
                             };
+
+                            console.log(`Session update received:`, {
+                                id: session.id,
+                                status: session.status,
+                                currentActivityId: session.currentActivityId
+                            });
 
                             callback(session);
                         } catch (error) {
-                            console.error("Erreur lors du traitement des données de session:", error);
-                            // Ne pas appeler callback(null) pour éviter de perdre l'état en cas d'erreur temporaire
+                            console.error("Error processing session data:", error);
                         }
                     } else {
-                        console.log("La session n'existe pas:", sessionId);
+                        console.log("Session does not exist:", sessionId);
                         callback(null);
                     }
                 },
-                // Erreur
                 (error) => {
-                    console.error("Erreur dans onSessionUpdate:", error);
-                    // Ne pas mettre callback(null) ici pour éviter de perdre l'état en cas d'erreur temporaire
+                    console.error("Error in session listener:", error);
                 }
             );
         } catch (error) {
-            console.error("Exception dans onSessionUpdate:", error);
-            // Si on ne peut pas configurer le listener, on retourne une fonction vide
+            console.error("Exception setting up session listener:", error);
             return () => {};
         }
     }
