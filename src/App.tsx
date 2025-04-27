@@ -40,7 +40,7 @@ function App() {
                     <SessionPage />
                   </ErrorBoundary>
                 } />
-                {/* Nouvelle route pour la page d'activité */}
+                {/* Conserver cette route pour la compatibilité avec les anciennes sessions */}
                 <Route path="/session/:sessionId/activity/:activityId" element={
                   <ErrorBoundary fallback={
                     <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">
@@ -53,7 +53,8 @@ function App() {
                       </button>
                     </div>
                   }>
-                    <ActivityPage />
+                    {/* Rediriger vers la nouvelle version intégrée dans SessionPage */}
+                    <Navigate to={"/session/:sessionId"} replace />
                   </ErrorBoundary>
                 } />
                 <Route path="/404" element={<NotFoundPage />} />

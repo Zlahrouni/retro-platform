@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityType, ColumnType, ACTIVITY_COLUMNS, Card } from '../types/types';
 import CardComponent from './cards/CardComponent';
 import AddCardForm from './cards/AddCardForm';
+import ParticipantCircles from './session/ParticipantCircles';
 
 interface ColumnProps {
     title: string;
@@ -12,6 +13,7 @@ interface ColumnProps {
     onAddCard: (text: string, columnType: ColumnType) => Promise<void>;
     isReadOnly: boolean;
     isAdmin: boolean;
+    sessionId: string;
 }
 
 // Individual Column Component
@@ -21,7 +23,8 @@ const Column: React.FC<ColumnProps> = ({
                                            cards,
                                            onAddCard,
                                            isReadOnly,
-                                           isAdmin
+                                           isAdmin,
+                                           sessionId
                                        }) => {
     // Animation delay based on column index (for staggered entrance)
     const getAnimationDelay = () => {
@@ -40,6 +43,7 @@ const Column: React.FC<ColumnProps> = ({
     };
 
     const [isAddingCard, setIsAddingCard] = useState(false);
+    const [isDropTarget, setIsDropTarget] = useState(false);
     const { t } = useTranslation();
 
     const handleAddCardClick = () => {
@@ -60,13 +64,33 @@ const Column: React.FC<ColumnProps> = ({
         setIsAddingCard(false);
     };
 
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDropTarget(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDropTarget(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDropTarget(false);
+        // Fonctionnalité drag and drop sera implémentée ultérieurement
+    };
+
     return (
         <div
-            className="flex flex-col h-full bg-gray-50 rounded-lg shadow-md border border-gray-200 overflow-hidden opacity-0 animate-fadeIn"
+            className={`flex flex-col h-full bg-gray-50 rounded-lg shadow-md border overflow-hidden opacity-0 animate-fadeIn ${
+                isDropTarget ? 'ring-2 ring-blue-400 border-blue-300 bg-blue-50' : 'border-gray-200'
+            }`}
             style={{
                 animationDelay: getAnimationDelay(),
                 animationFillMode: 'forwards'
             }}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
         >
             {/* Column Header */}
             <div className={`p-3 font-semibold text-center text-white ${getColumnHeaderColor(columnType)}`}>
@@ -85,6 +109,7 @@ const Column: React.FC<ColumnProps> = ({
                                 animationDelay: `${index * 100}ms`,
                                 animationFillMode: 'backwards'
                             }}
+                            draggable={!isReadOnly}
                         >
                             <CardComponent card={card} />
                         </div>
@@ -162,6 +187,7 @@ interface BoardProps {
     onAddCard: (text: string, columnType: ColumnType) => Promise<void>;
     isReadOnly: boolean;
     isAdmin: boolean;
+    sessionId?: string;
 }
 
 const InteractiveBoard: React.FC<BoardProps> = ({
@@ -169,7 +195,8 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                                     cards,
                                                     onAddCard,
                                                     isReadOnly,
-                                                    isAdmin
+                                                    isAdmin,
+                                                    sessionId = ''
                                                 }) => {
     const { t } = useTranslation();
     const [filteredCards, setFilteredCards] = useState<Record<string, Card[]>>({});
@@ -267,12 +294,19 @@ const InteractiveBoard: React.FC<BoardProps> = ({
         <div className={`bg-white rounded-lg shadow-lg p-4 mb-6 overflow-hidden transition-all duration-500 ${animateBoard ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
             {/* Board Header */}
             <div className="mb-6 pb-4 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                    <span className="mr-2">{t(`activities.types.${activityType}`)}</span>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
-                        {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
-                    </span>
-                </h2>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                            <span className="mr-2">{t(`activities.types.${activityType}`)}</span>
+                            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+                                {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
+                            </span>
+                        </h2>
+                    </div>
+
+                    {/* Participant circles */}
+                    {sessionId && <ParticipantCircles sessionId={sessionId} />}
+                </div>
 
                 {isReadOnly && (
                     <div className="mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded flex items-center">
@@ -308,6 +342,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 onAddCard={onAddCard}
                                 isReadOnly={isReadOnly}
                                 isAdmin={isAdmin}
+                                sessionId={sessionId}
                             />
                         </div>
                     ))

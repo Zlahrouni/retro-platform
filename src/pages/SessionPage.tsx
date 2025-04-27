@@ -13,8 +13,10 @@ import RetroActivitySelectionModal from '../components/activities/RetroActivityS
 import AdminActivityList from '../components/session/AdminActivityList';
 import WaitingForActivity from '../components/session/WaitingForActivity';
 import SessionStatusBanner from '../components/session/SessionStatusBanner';
-import { ActivityType } from '../types/types';
+import { ActivityType, ColumnType } from '../types/types';
 import EmptyState from "../components/session/EmptyState";
+import InteractiveBoard from "../components/InteractiveBoard";
+import { ActivityData } from '../services/activitiesService';
 
 const SessionPage: React.FC = () => {
     const { t } = useTranslation();
@@ -29,8 +31,14 @@ const SessionPage: React.FC = () => {
     const [showIceBreakerModal, setShowIceBreakerModal] = useState(false);
     const [showRetroModal, setShowRetroModal] = useState(false);
 
-    const [isRedirecting, setIsRedirecting] = useState(false);
+    // État pour le mode plein écran
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // État pour suivre le lancement d'une activité
     const [isLaunching, setIsLaunching] = useState(false);
+
+    // État pour l'activité courante
+    const [currentActivity, setCurrentActivity] = useState<ActivityData | null>(null);
 
     // Utiliser notre hook personnalisé pour la session
     const {
@@ -41,7 +49,9 @@ const SessionPage: React.FC = () => {
         pauseSession,
         resumeSession,
         isSessionCreator,
-        setCurrentActivity // Fonction pour mettre à jour l'activité courante
+        setCurrentActivity: setSessionCurrentActivity,
+        addCard,
+        cards
     } = useSession(sessionId);
 
     // Utiliser notre hook pour les activités
@@ -52,6 +62,7 @@ const SessionPage: React.FC = () => {
         addActivity,
         launchActivity,
         deleteActivity,
+        completeActivity,
         hasLaunchedRetroActivity,
         getLaunchedRetroActivity
     } = useActivities(sessionId, isSessionCreator);
@@ -67,6 +78,22 @@ const SessionPage: React.FC = () => {
             navigate(`/auth/${sessionId}`);
         }
     }, [sessionId, navigate]);
+
+    // Effect pour suivre l'activité courante basée sur currentActivityId
+    useEffect(() => {
+        if (session?.currentActivityId && activities.length > 0) {
+            const activity = activities.find(act => act.id === session.currentActivityId);
+            if (activity) {
+                console.log("Activité courante trouvée:", activity);
+                setCurrentActivity(activity);
+            } else {
+                console.log("Activité introuvable pour ID:", session.currentActivityId);
+            }
+        } else if (!session?.currentActivityId) {
+            // Réinitialiser l'activité courante si aucune n'est définie
+            setCurrentActivity(null);
+        }
+    }, [session?.currentActivityId, activities]);
 
     // Debug session and activities state
     useEffect(() => {
@@ -87,61 +114,6 @@ const SessionPage: React.FC = () => {
             })));
         }
     }, [session, activities]);
-
-    // Effet pour rediriger si une activité courante est détectée
-    useEffect(() => {
-        // Don't redirect if we're in the middle of launching an activity
-        if (!session || !sessionId || isRedirecting || isLaunching) return;
-
-        if (session.currentActivityId) {
-            console.log(`⚠️ Current activity detected: ${session.currentActivityId}`);
-
-            // Skip if activities are still loading
-            if (activitiesLoading) {
-                console.log("Activities still loading, waiting...");
-                return;
-            }
-
-            // Make sure we have a synchronized state before redirecting
-            // Only redirect if we have activities data and the current activity exists
-            const activityExists = activities.some(act => act.id === session.currentActivityId);
-
-            if (!activityExists) {
-                console.log(`Activity ${session.currentActivityId} not found in activities list, waiting...`);
-                return;
-            }
-
-            // Prevent multiple redirects
-            setIsRedirecting(true);
-
-            // Check if the activity exists in our activities array
-            const activity = activities.find(act => act.id === session.currentActivityId);
-
-            if (activity) {
-                console.log(`Activity found in activities list:`, {
-                    id: activity.id,
-                    type: activity.type,
-                    status: activity.status
-                });
-
-                console.log(`✅ Redirecting to activity: ${session.currentActivityId}`);
-
-                // Use navigate instead of window.location for better state handling
-                // Add replace: true to avoid browser history buildup
-                navigate(`/session/${sessionId}/activity/${session.currentActivityId}`, {
-                    state: { fromSessionPage: true },
-                    replace: true
-                });
-            } else {
-                console.warn(`Activity ${session.currentActivityId} not found in activities list`);
-
-                // If we have activities but can't find this one, wait longer and retry
-                if (activities.length > 0) {
-                    setTimeout(() => setIsRedirecting(false), 2000);
-                }
-            }
-        }
-    }, [session, sessionId, activities, activitiesLoading, navigate, isRedirecting, isLaunching]);
 
     // Effet pour les tentatives de reconnexion
     useEffect(() => {
@@ -232,32 +204,12 @@ const SessionPage: React.FC = () => {
 
                 // Step 2: Set this activity as the current activity of the session
                 console.log(`Step 2: Setting activity ${activityId} as current activity...`);
-                const updateSuccess = await setCurrentActivity(activityId);
+                const updateSuccess = await setSessionCurrentActivity(activityId);
 
                 if (updateSuccess) {
                     console.log(`✅ Current activity updated successfully in Firebase`);
-
-                    // Step 3: Add a small delay to ensure Firebase propagates the changes
-                    await new Promise(resolve => setTimeout(resolve, 800));
-
-                    // Step 4: Navigate to activity page
-                    console.log(`Step 3: Navigating to activity...`);
-                    navigate(`/session/${sessionId}/activity/${activityId}`, {
-                        state: { fromLaunch: true },
-                        replace: true
-                    });
                 } else {
                     console.error("❌ Error: Failed to update current activity in Firebase");
-
-                    // Even if setting currentActivity fails, try to navigate anyway
-                    // This is a fallback in case the data was actually updated but verification failed
-                    console.log("Attempting navigation despite currentActivity update error...");
-                    setTimeout(() => {
-                        navigate(`/session/${sessionId}/activity/${activityId}`, {
-                            state: { fromLaunch: true, bypassCheck: true },
-                            replace: true
-                        });
-                    }, 500);
                 }
             } else {
                 console.error("❌ Error: Failed to launch activity");
@@ -269,7 +221,29 @@ const SessionPage: React.FC = () => {
         } finally {
             setIsLaunching(false);
         }
-    }, [isSessionCreator, sessionId, launchActivity, setCurrentActivity, navigate]);
+    }, [isSessionCreator, sessionId, launchActivity, setSessionCurrentActivity]);
+
+    // Fonction pour terminer une activité (remplace la redirection)
+    const handleCompleteActivity = useCallback(async () => {
+        if (!isSessionCreator || !session?.currentActivityId) return;
+
+        try {
+            console.log(`Completing activity ${session.currentActivityId}`);
+
+            // Terminer l'activité
+            const success = await completeActivity(session.currentActivityId);
+
+            if (success) {
+                // Réinitialiser currentActivityId dans la session
+                await setSessionCurrentActivity(null);
+                console.log("Activity completed and removed from session");
+            } else {
+                console.error("Failed to complete activity");
+            }
+        } catch (err) {
+            console.error("Error completing activity:", err);
+        }
+    }, [isSessionCreator, session?.currentActivityId, completeActivity, setSessionCurrentActivity]);
 
     const handleDeleteActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;
@@ -278,6 +252,21 @@ const SessionPage: React.FC = () => {
             await deleteActivity(activityId);
         }
     }, [isSessionCreator, deleteActivity, t]);
+
+    // Fonction pour ajouter une carte au tableau
+    const handleAddCard = async (text: string, columnType: ColumnType) => {
+        try {
+            console.log(`Adding card to ${columnType} column: "${text.substring(0, 20)}..."`);
+            await addCard(text, columnType);
+        } catch (error) {
+            console.error("Error adding card:", error);
+        }
+    };
+
+    // Toggle fullscreen mode
+    const toggleFullscreen = () => {
+        setIsFullscreen(!isFullscreen);
+    };
 
     // Fonctions de rendu conditionnelles
     const renderLoading = () => (
@@ -367,15 +356,64 @@ const SessionPage: React.FC = () => {
                             {t('activities.activeRetroDescription')}
                         </p>
                     </div>
-
-                    {/* Ici, on intégrerait les colonnes pour l'activité en cours */}
-                    {/* Ce code sera implémenté dans une partie future */}
                 </div>
             );
         } else {
             // Sinon, afficher l'écran d'attente
             return <WaitingForActivity />;
         }
+    };
+
+    // Nouveau rendu pour le tableau interactif
+    const renderBoard = () => {
+        if (!currentActivity || !sessionId) return null;
+
+        // Determine si les cartes peuvent être ajoutées
+        const isReadOnly = session?.status === 'closed' || session?.status === 'paused';
+
+        return (
+            <div className={`relative transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-gray-100 p-4 overflow-auto' : ''}`}>
+                {/* Controls for fullscreen */}
+                {isSessionCreator && (
+                    <div className="mb-4 flex justify-end space-x-2">
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center"
+                            aria-label={isFullscreen ? "Quitter le plein écran" : "Mode plein écran"}
+                        >
+                            {isFullscreen ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                                </svg>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={handleCompleteActivity}
+                            className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {t('activities.completeActivity')}
+                        </button>
+                    </div>
+                )}
+
+                {/* Board Component */}
+                <InteractiveBoard
+                    activityType={currentActivity.type as ActivityType | 'iceBreaker'}
+                    cards={session?.status !== 'closed' ? cards : []}
+                    onAddCard={handleAddCard}
+                    isReadOnly={isReadOnly}
+                    isAdmin={isSessionCreator}
+                />
+            </div>
+        );
     };
 
     const renderSessionContent = () => {
@@ -427,11 +465,20 @@ const SessionPage: React.FC = () => {
                     />
                 )}
 
-                {/* Liste des participants */}
-                {sessionId && <ParticipantsList sessionId={sessionId} />}
+                {/* Conditional rendering based on currentActivity */}
+                {currentActivity ? (
+                    // Mode tableau interactif
+                    renderBoard()
+                ) : (
+                    // Mode session normale
+                    <>
+                        {/* Liste des participants */}
+                        {sessionId && <ParticipantsList sessionId={sessionId} />}
 
-                {/* Vue différente selon que l'utilisateur est admin ou non */}
-                {isSessionCreator ? renderAdminView() : renderParticipantView()}
+                        {/* Vue différente selon que l'utilisateur est admin ou non */}
+                        {isSessionCreator ? renderAdminView() : renderParticipantView()}
+                    </>
+                )}
 
                 {/* Message de partage */}
                 {showShareMessage && (
@@ -468,7 +515,7 @@ const SessionPage: React.FC = () => {
 
     // Rendu principal
     return (
-        <div className="max-w-6xl mx-auto mt-4 px-4 pb-16">
+        <div className={`max-w-6xl mx-auto mt-4 px-4 pb-16 ${isFullscreen ? 'hidden' : ''}`}>
             {isLoading ? renderLoading() :
                 error || !session ? renderError() :
                     renderSessionContent()

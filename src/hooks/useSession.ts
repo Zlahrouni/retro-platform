@@ -43,6 +43,7 @@ export const useCreateSession = () => {
 };
 
 // Hook pour charger et écouter une session
+// Hook pour charger et écouter une session
 export const useSession = (sessionId?: string) => {
     const [session, setSession] = useState<Session | null>(null);
     const [cards, setCards] = useState<Card[]>([]);
