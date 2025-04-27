@@ -5,6 +5,7 @@ import { ActivityType, ColumnType, ACTIVITY_COLUMNS, Card } from '../types/types
 import CardComponent from './cards/CardComponent';
 import AddCardForm from './cards/AddCardForm';
 import {QuestionFunExpress} from "./activities/icebreakers";
+import Button from "./commons/Button";
 
 interface ColumnProps {
     title: string;
@@ -142,19 +143,23 @@ const Column: React.FC<ColumnProps> = ({
                         onCancel={handleCancelAddCard}
                     />
                 ) : (
-                    <button
+                    <Button
+                        variant={isReadOnly ? "secondary" : "secondary"}
                         onClick={handleAddCardClick}
                         disabled={isReadOnly}
-                        className={`w-full py-2 px-4 rounded flex items-center justify-center text-sm font-medium transition-colors
-              ${isReadOnly
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'}`}
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                        }
+                        className={`w-full py-2 px-4 justify-center text-sm font-medium ${
+                            isReadOnly
+                                ? 'bg-gray-100 text-gray-400'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                        }`}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
                         {t('session.addCard')}
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>

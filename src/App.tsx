@@ -10,6 +10,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import NavBar from './components/layout/NavBar';
 import ErrorBoundary from "./components/commons/ErrorBoundary";
 import ActivityPage from "./pages/ActivityPage";
+import Button from "./components/commons/Button";
 
 function App() {
   // @ts-ignore
@@ -29,34 +30,18 @@ function App() {
                   <ErrorBoundary fallback={
                     <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">
                       <p>Une erreur est survenue lors du chargement de la session.</p>
-                      <button
+                      <Button
+                          variant="danger"
                           onClick={() => window.location.href = '/'}
-                          className="mt-4 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition-colors"
                       >
                         Retour à l'accueil
-                      </button>
+                      </Button>
                     </div>
                   }>
                     <SessionPage />
                   </ErrorBoundary>
                 } />
-                {/* Conserver cette route pour la compatibilité avec les anciennes sessions */}
-                <Route path="/session/:sessionId/activity/:activityId" element={
-                  <ErrorBoundary fallback={
-                    <div className="bg-red-100 p-4 rounded-md text-red-700 max-w-md mx-auto mt-8">
-                      <p>Une erreur est survenue lors du chargement de l'activité.</p>
-                      <button
-                          onClick={() => window.location.href = '/'}
-                          className="mt-4 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition-colors"
-                      >
-                        Retour à l'accueil
-                      </button>
-                    </div>
-                  }>
-                    {/* Rediriger vers la nouvelle version intégrée dans SessionPage */}
-                    <Navigate to={"/session/:sessionId"} replace />
-                  </ErrorBoundary>
-                } />
+
                 <Route path="/404" element={<NotFoundPage />} />
                 <Route path="*" element={<Navigate to="/404" />} />
               </Routes>

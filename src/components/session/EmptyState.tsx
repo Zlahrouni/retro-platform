@@ -1,6 +1,7 @@
 // src/components/session/EmptyState.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import Button from "../commons/Button";
 
 interface EmptyStateProps {
     onAddActivity: () => void;
@@ -58,15 +59,20 @@ const EmptyState: React.FC<EmptyStateProps> = ({
                     </>
                 )}
 
-                <button
-                    onClick={onAddActivity}
-                    className="px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-blue-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105 inline-flex items-center shadow-md"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    {t('session.addActivity')}
-                </button>
+                <div className="text-center mt-6">
+                    <Button
+                        variant="primary"
+                        onClick={onAddActivity}
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                        }
+                        className="px-5 py-2.5 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105 shadow-md mx-auto inline-flex"
+                    >
+                        {t('session.addActivity')}
+                    </Button>
+                </div>
             </div>
         </div>
     );

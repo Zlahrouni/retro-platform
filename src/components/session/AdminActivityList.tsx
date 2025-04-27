@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityData } from '../../services/activitiesService';
 import { formatTimeHHMM, getTimestamp } from '../../utils/dateUtils';
+import Button from "../commons/Button";
 
 interface AdminActivityListProps {
     activities: ActivityData[];
@@ -162,17 +163,20 @@ const AdminActivityList: React.FC<AdminActivityListProps> = ({
                         <div className="border-t pt-3 flex justify-end space-x-2">
                             {/* Bouton Lancer - uniquement pour les activités non lancées */}
                             {!activity.launched && (
-                                <button
+                                <Button
+                                    variant="primary"
                                     onClick={() => onLaunchActivity(activity.id)}
-                                    className="px-3 py-1.5 bg-primary text-white text-sm rounded hover:bg-blue-600 transition-colors flex items-center"
+                                    icon={
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    }
+                                    className="text-sm py-1.5 px-3"
                                     aria-label={`${t('activities.launch')} ${getActivityName(activity)}`}
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
                                     {t('activities.launch')}
-                                </button>
+                                </Button>
                             )}
 
                             {/* Bouton activité en cours - pour les activités déjà lancées */}

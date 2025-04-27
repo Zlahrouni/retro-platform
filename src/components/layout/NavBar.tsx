@@ -48,23 +48,9 @@ const NavBar: React.FC = () => {
                         <div className="flex items-center space-x-2 mr-4">
                             <Link
                                 to="/"
-                                className={`py-2 px-4 rounded-full transition-colors ${
-                                    isActive('/')
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className={`py-2 px-4 rounded-full transition-colors text-gray-700 hover:bg-gray-100`}
                             >
                                 {t('navigation.home')}
-                            </Link>
-                            <Link
-                                to="/create"
-                                className={`py-2 px-4 rounded-full transition-colors ${
-                                    isActive('/create')
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-gray-700 hover:bg-gray-100'
-                                }`}
-                            >
-                                {t('navigation.newSession')}
                             </Link>
                         </div>
                         <LanguageSwitcher />

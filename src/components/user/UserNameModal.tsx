@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { userService } from '../../services/userService';
+import Button from "../commons/Button";
 
 interface UserNameModalProps {
     onComplete: () => void;
@@ -57,20 +58,20 @@ const UserNameModal: React.FC<UserNameModalProps> = ({
 
                     <div className="flex justify-end space-x-3 mt-6">
                         {showCancelButton && onCancel && (
-                            <button
-                                type="button"
+                            <Button
+                                variant="secondary"
                                 onClick={onCancel}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                className="border border-gray-300"
                             >
                                 {t('general.cancel')}
-                            </button>
+                            </Button>
                         )}
-                        <button
+                        <Button
+                            variant="primary"
                             type="submit"
-                            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600"
                         >
                             {t('user.continue')}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

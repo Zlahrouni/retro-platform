@@ -20,6 +20,7 @@ import { ActivityData } from '../services/activitiesService';
 import ParticipantCircles from "../components/session/ParticipantCircles";
 import ConfirmationModal from '../components/commons/ConfirmationModal';
 import {sessionsService} from "../services/firebaseService";
+import Button from "../components/commons/Button";
 
 
 const SessionPage: React.FC = () => {
@@ -425,16 +426,18 @@ const SessionPage: React.FC = () => {
 
                 {/* Interface pour ajouter une activité si session non fermée */}
                 {session && session.status !== 'closed' && activities.length > 0 && (
-                    <div className="mt-6 text-center">
-                        <button
+                    <div className="flex justify-center">
+                        <Button
+                            variant="primary"
                             onClick={handleAddActivityClick}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center"
+                            icon={
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                            }
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
                             {t('session.addActivity')}
-                        </button>
+                        </Button>
                     </div>
                 )}
             </>
@@ -510,32 +513,35 @@ const SessionPage: React.FC = () => {
                         </h2>
                     </div>
                     <div className="flex space-x-2">
-                        <button
-                            onClick={toggleFullscreen}
-                            className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center"
-                            aria-label={isFullscreen ? "Quitter le plein écran" : "Mode plein écran"}
-                        >
-                            {isFullscreen ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-                                </svg>
-                            )}
-                        </button>
+                        {/*<button*/}
+                        {/*    onClick={toggleFullscreen}*/}
+                        {/*    className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center"*/}
+                        {/*    aria-label={isFullscreen ? "Quitter le plein écran" : "Mode plein écran"}*/}
+                        {/*>*/}
+                        {/*    {isFullscreen ? (*/}
+                        {/*        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">*/}
+                        {/*            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />*/}
+                        {/*        </svg>*/}
+                        {/*    ) : (*/}
+                        {/*        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">*/}
+                        {/*            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />*/}
+                        {/*        </svg>*/}
+                        {/*    )}*/}
+                        {/*</button>*/}
 
                         {isSessionCreator && (
-                            <button
+                            <Button
+                                variant="success"
                                 onClick={handleCompleteActivity}
-                                className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                }
+                                className="p-2"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
                                 {t('activities.completeActivity')}
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>

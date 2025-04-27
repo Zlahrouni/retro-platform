@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import HomeBottomSection from '../components/home/HomeBottomSection';
+import Button from "../components/commons/Button";
 
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
@@ -31,12 +32,13 @@ const HomePage: React.FC = () => {
 
             {/* Main Button */}
             <div className="max-w-lg mx-auto">
-                <button
+                <Button
+                    variant="primary"
                     onClick={handleCreateSession}
-                    className="w-full block text-center bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 hover:bg-blue-700 hover:shadow-lg"
+                    className="w-full block text-center font-bold py-4 px-6 rounded-lg transition-all duration-300 hover:shadow-lg justify-center"
                 >
                     {t('home.createSession')}
-                </button>
+                </Button>
             </div>
             <HomeBottomSection />
         </div>
