@@ -10,6 +10,9 @@ import NotFoundPage from './pages/NotFoundPage';
 import NavBar from './components/layout/NavBar';
 import ErrorBoundary from "./components/commons/ErrorBoundary";
 import Button from "./components/commons/Button";
+import AdminPage from './pages/AdminPage';
+import ActivityPage from './pages/ActivityPage';
+import AdminAccessor from "./components/commons/AdminAccessor";
 
 function App() {
   // @ts-ignore
@@ -18,6 +21,7 @@ function App() {
   return (
       <ErrorBoundary>
         <BrowserRouter>
+          <AdminAccessor />
           <div className="min-h-screen bg-gray-50 flex flex-col">
             <NavBar />
 
@@ -40,6 +44,9 @@ function App() {
                     <SessionPage />
                   </ErrorBoundary>
                 } />
+                <Route path="/session/:sessionId/activity/:activityId" element={<ActivityPage />} />
+                {/* Hidden admin route */}
+                <Route path="/root-admin" element={<AdminPage />} />
 
                 <Route path="/404" element={<NotFoundPage />} />
                 <Route path="*" element={<Navigate to="/404" />} />
