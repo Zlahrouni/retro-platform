@@ -14,6 +14,7 @@ interface ColumnProps {
     isReadOnly: boolean;
     isAdmin: boolean;
     sessionId: string;
+    selectedAuthor?: string | null;
 }
 
 // Individual Column Component
@@ -24,7 +25,8 @@ const Column: React.FC<ColumnProps> = ({
                                            onAddCard,
                                            isReadOnly,
                                            isAdmin,
-                                           sessionId
+                                           sessionId,
+                                           selectedAuthor
                                        }) => {
     // Animation delay based on column index (for staggered entrance)
     const getAnimationDelay = () => {
@@ -45,6 +47,11 @@ const Column: React.FC<ColumnProps> = ({
     const [isAddingCard, setIsAddingCard] = useState(false);
     const [isDropTarget, setIsDropTarget] = useState(false);
     const { t } = useTranslation();
+
+    // Filtrer les cartes par auteur si nécessaire
+    const filteredCards = selectedAuthor
+        ? cards.filter(card => card.author === selectedAuthor)
+        : cards;
 
     const handleAddCardClick = () => {
         setIsAddingCard(true);
@@ -95,13 +102,16 @@ const Column: React.FC<ColumnProps> = ({
             {/* Column Header */}
             <div className={`p-3 font-semibold text-center text-white ${getColumnHeaderColor(columnType)}`}>
                 <h3 className="truncate">{title}</h3>
-                <div className="text-xs opacity-80 mt-0.5">{cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}</div>
+                <div className="text-xs opacity-80 mt-0.5">
+                    {filteredCards.length} {filteredCards.length === 1 ? t('general.card') : t('general.cards')}
+                    {selectedAuthor && <span className="ml-1">({selectedAuthor})</span>}
+                </div>
             </div>
 
             {/* Cards Container */}
             <div className="flex-grow p-3 overflow-y-auto bg-gray-50 space-y-3 min-h-[200px]">
-                {cards.length > 0 ? (
-                    cards.map((card, index) => (
+                {filteredCards.length > 0 ? (
+                    filteredCards.map((card, index) => (
                         <div
                             className="transform transition-transform hover:-translate-y-1 animate-cardEntrance"
                             key={card.id}
@@ -188,6 +198,8 @@ interface BoardProps {
     isReadOnly: boolean;
     isAdmin: boolean;
     sessionId?: string;
+    isFullscreen?: boolean;
+    selectedAuthor?: string | null;
 }
 
 const InteractiveBoard: React.FC<BoardProps> = ({
@@ -196,12 +208,24 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                                     onAddCard,
                                                     isReadOnly,
                                                     isAdmin,
-                                                    sessionId = ''
+                                                    sessionId = '',
+                                                    isFullscreen = false
                                                 }) => {
     const { t } = useTranslation();
     const [filteredCards, setFilteredCards] = useState<Record<string, Card[]>>({});
     const [animateBoard, setAnimateBoard] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
+    const [uniqueAuthors, setUniqueAuthors] = useState<string[]>([]);
+
+    // Extraire les auteurs uniques des cartes
+    useEffect(() => {
+        if (cards && cards.length > 0) {
+            const authorsSet = new Set(cards.map(card => card.author));
+            const authors = Array.from(authorsSet).filter(Boolean) as string[];
+            setUniqueAuthors(authors);
+        }
+    }, [cards]);
 
     // Log activity information when component mounts
     useEffect(() => {
@@ -250,6 +274,17 @@ const InteractiveBoard: React.FC<BoardProps> = ({
         return () => clearTimeout(timer);
     }, []);
 
+    // Gestionnaire pour sélectionner un auteur
+    const handleAuthorSelect = (author: string) => {
+        if (selectedAuthor === author) {
+            // Si l'auteur est déjà sélectionné, désélectionner
+            setSelectedAuthor(null);
+        } else {
+            // Sinon, sélectionner l'auteur
+            setSelectedAuthor(author);
+        }
+    };
+
     // Don't render for ice breaker activities
     if (activityType === 'iceBreaker') {
         return (
@@ -283,15 +318,15 @@ const InteractiveBoard: React.FC<BoardProps> = ({
     // Determine column width based on count (responsive)
     const getColumnWidthClass = () => {
         switch(columns.length) {
-            case 2: return 'md:w-1/2';
-            case 3: return 'md:w-1/3';
-            case 4: return 'md:w-1/2 lg:w-1/4';
+            case 2: return isFullscreen ? 'w-1/2' : 'md:w-1/2';
+            case 3: return isFullscreen ? 'w-1/3' : 'md:w-1/3';
+            case 4: return isFullscreen ? 'w-1/4' : 'md:w-1/2 lg:w-1/4';
             default: return 'w-full';
         }
     };
 
     return (
-        <div className={`bg-white rounded-lg shadow-lg p-4 mb-6 overflow-hidden transition-all duration-500 ${animateBoard ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
+        <div className={`bg-white rounded-lg shadow-lg p-4 mb-6 overflow-hidden transition-all duration-500 ${isFullscreen ? 'h-full' : ''} ${animateBoard ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
             {/* Board Header */}
             <div className="mb-6 pb-4 border-b border-gray-200">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
@@ -302,10 +337,44 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
                             </span>
                         </h2>
+
+                        {selectedAuthor && (
+                            <div className="mt-1 text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded inline-flex items-center">
+                                <span>Filtré par: {selectedAuthor}</span>
+                                <button
+                                    onClick={() => setSelectedAuthor(null)}
+                                    className="ml-2 text-blue-700 hover:text-blue-900"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Participant circles */}
-                    {sessionId && <ParticipantCircles sessionId={sessionId} />}
+                    {/* Utilisateurs participant au board avec une apparence plus attrayante */}
+                    <div className="flex items-center flex-wrap gap-2">
+                        {uniqueAuthors.map(author => (
+                            <button
+                                key={author}
+                                onClick={() => handleAuthorSelect(author)}
+                                className={`flex items-center space-x-1 px-3 py-1.5 rounded-full transition-all 
+                                    ${selectedAuthor === author
+                                    ? 'bg-blue-500 text-white shadow-md scale-110'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold">
+                                    {author.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span className="text-sm">{author}</span>
+                                {selectedAuthor === author && (
+                                    <span className="w-2 h-2 rounded-full bg-white"></span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {isReadOnly && (
@@ -319,7 +388,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
             </div>
 
             {/* Columns Container */}
-            <div className={`flex flex-col md:flex-row flex-wrap gap-4 min-h-[500px] relative`}>
+            <div className={`flex flex-col md:flex-row flex-wrap gap-4 ${isFullscreen ? 'h-full' : 'min-h-[500px]'} relative`}>
                 {/* Background decoration (subtle grid pattern) */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none"
                      style={{
@@ -343,6 +412,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 isReadOnly={isReadOnly}
                                 isAdmin={isAdmin}
                                 sessionId={sessionId}
+                                selectedAuthor={selectedAuthor}
                             />
                         </div>
                     ))

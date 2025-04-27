@@ -440,7 +440,57 @@ export const sessionsService = {
 
     // Fermer une session
     async closeSession(sessionId: string): Promise<void> {
-        await this.updateSessionStatus(sessionId, 'closed');
+        if (!sessionId) {
+            console.error("SessionId manquant pour la fermeture/suppression de session");
+            throw new Error("SessionId requis pour fermer et supprimer une session");
+        }
+
+        try {
+            console.log(`Début de la suppression de la session ${sessionId} et de ses données associées`);
+
+            // Obtenir une référence à la session
+            const sessionRef = doc(db, 'sessions', sessionId);
+
+            // 1. D'abord marquer la session comme fermée (pour la compatibilité avec les anciens clients)
+            await updateDoc(sessionRef, { status: 'closed' });
+            console.log(`Session ${sessionId} marquée comme fermée`);
+
+            // 2. Récupérer tous les documents liés à cette session
+            // a. Cartes
+            const cardsQuery = query(collection(db, 'cards'), where('sessionId', '==', sessionId));
+            const cardsSnapshot = await getDocs(cardsQuery);
+            console.log(`${cardsSnapshot.docs.length} cartes trouvées pour suppression`);
+
+            // b. Activités
+            const activitiesQuery = query(collection(db, 'activities'), where('sessionId', '==', sessionId));
+            const activitiesSnapshot = await getDocs(activitiesQuery);
+            console.log(`${activitiesSnapshot.docs.length} activités trouvées pour suppression`);
+
+            // 3. Supprimer toutes les cartes
+            const deleteCards = cardsSnapshot.docs.map(doc => {
+                console.log(`Suppression de la carte ${doc.id}`);
+                return deleteDoc(doc.ref);
+            });
+
+            // 4. Supprimer toutes les activités
+            const deleteActivities = activitiesSnapshot.docs.map(doc => {
+                console.log(`Suppression de l'activité ${doc.id}`);
+                return deleteDoc(doc.ref);
+            });
+
+            // 5. Exécuter toutes les suppressions en parallèle
+            console.log("Exécution des suppressions en parallèle...");
+            await Promise.all([...deleteCards, ...deleteActivities]);
+
+            // 6. Finalement, supprimer la session elle-même
+            console.log(`Suppression de la session ${sessionId}`);
+            await deleteDoc(sessionRef);
+
+            console.log(`Session ${sessionId} et toutes ses données associées supprimées avec succès`);
+        } catch (error) {
+            console.error("Erreur lors de la suppression de la session et ses données:", error);
+            throw error;
+        }
     },
 
     // Mettre en pause une session

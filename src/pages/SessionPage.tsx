@@ -17,6 +17,9 @@ import { ActivityType, ColumnType } from '../types/types';
 import EmptyState from "../components/session/EmptyState";
 import InteractiveBoard from "../components/InteractiveBoard";
 import { ActivityData } from '../services/activitiesService';
+import ParticipantCircles from "../components/session/ParticipantCircles";
+import ConfirmationModal from '../components/commons/ConfirmationModal';
+
 
 const SessionPage: React.FC = () => {
     const { t } = useTranslation();
@@ -34,15 +37,22 @@ const SessionPage: React.FC = () => {
     // État pour le mode plein écran
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // État pour le filtrage par utilisateur
+    const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
     // État pour suivre le lancement d'une activité
     const [isLaunching, setIsLaunching] = useState(false);
 
     // État pour l'activité courante
     const [currentActivity, setCurrentActivity] = useState<ActivityData | null>(null);
 
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeletingSession, setIsDeletingSession] = useState(false);
+
     // Utiliser notre hook personnalisé pour la session
     const {
         session,
+        cards,
         isLoading: sessionLoading,
         error: sessionError,
         closeSession,
@@ -50,8 +60,7 @@ const SessionPage: React.FC = () => {
         resumeSession,
         isSessionCreator,
         setCurrentActivity: setSessionCurrentActivity,
-        addCard,
-        cards
+        addCard
     } = useSession(sessionId);
 
     // Utiliser notre hook pour les activités
@@ -78,6 +87,30 @@ const SessionPage: React.FC = () => {
             navigate(`/auth/${sessionId}`);
         }
     }, [sessionId, navigate]);
+
+    // Ajouter des écouteurs pour le mode plein écran
+    useEffect(() => {
+        // Gérer la touche Escape pour quitter le mode plein écran
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                setIsFullscreen(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        // Désactiver le défilement du body en mode plein écran
+        if (isFullscreen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = '';
+        };
+    }, [isFullscreen]);
 
     // Effect pour suivre l'activité courante basée sur currentActivityId
     useEffect(() => {
@@ -136,11 +169,32 @@ const SessionPage: React.FC = () => {
         });
     }, []);
 
-    const handleCloseSession = useCallback(async () => {
-        if (window.confirm(t('session.confirmClose'))) {
+
+    const handleCloseSession = useCallback(() => {
+        // Ouvrir le modal de confirmation au lieu d'utiliser window.confirm
+        setShowDeleteModal(true);
+    }, []);
+
+    const handleConfirmDelete = useCallback(async () => {
+        try {
+            // Marquer comme en cours de suppression
+            setIsDeletingSession(true);
+
+            // Appeler le service pour fermer et supprimer la session
             await closeSession();
+
+            // Rediriger vers la page d'accueil après suppression
+            navigate('/');
+        } catch (error) {
+            console.error("Erreur lors de la suppression de la session:", error);
+            // Réinitialiser l'état même en cas d'erreur
+            setIsDeletingSession(false);
+            setShowDeleteModal(false);
+
+            // Afficher un message d'erreur
+            alert(t('session.deleteError'));
         }
-    }, [closeSession, t]);
+    }, [closeSession, navigate, t]);
 
     const handlePauseSession = useCallback(async () => {
         await pauseSession();
@@ -237,13 +291,18 @@ const SessionPage: React.FC = () => {
                 // Réinitialiser currentActivityId dans la session
                 await setSessionCurrentActivity(null);
                 console.log("Activity completed and removed from session");
+
+                // Quitter le mode plein écran si actif
+                if (isFullscreen) {
+                    setIsFullscreen(false);
+                }
             } else {
                 console.error("Failed to complete activity");
             }
         } catch (err) {
             console.error("Error completing activity:", err);
         }
-    }, [isSessionCreator, session?.currentActivityId, completeActivity, setSessionCurrentActivity]);
+    }, [isSessionCreator, session?.currentActivityId, completeActivity, setSessionCurrentActivity, isFullscreen]);
 
     const handleDeleteActivity = useCallback(async (activityId: string) => {
         if (!isSessionCreator) return;
@@ -266,6 +325,13 @@ const SessionPage: React.FC = () => {
     // Toggle fullscreen mode
     const toggleFullscreen = () => {
         setIsFullscreen(!isFullscreen);
+        // Réinitialiser la sélection d'utilisateur lors du changement de mode
+        setSelectedUser(null);
+    };
+
+    // Sélectionner un utilisateur pour le filtrage
+    const handleSelectUser = (username: string | null) => {
+        setSelectedUser(username);
     };
 
     // Fonctions de rendu conditionnelles
@@ -372,10 +438,34 @@ const SessionPage: React.FC = () => {
         const isReadOnly = session?.status === 'closed' || session?.status === 'paused';
 
         return (
-            <div className={`relative transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-gray-100 p-4 overflow-auto' : ''}`}>
-                {/* Controls for fullscreen */}
-                {isSessionCreator && (
-                    <div className="mb-4 flex justify-end space-x-2">
+            <div className={`transition-all duration-300 ${
+                isFullscreen
+                    ? 'fixed inset-0 z-50 bg-gray-100 p-6 overflow-auto flex flex-col'
+                    : 'relative'
+            }`}>
+                {/* Overlay pour sortir du mode plein écran en mode mobile */}
+                {isFullscreen && (
+                    <div className="absolute top-2 right-2 z-10 md:hidden">
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 rounded-full bg-white shadow-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-label="Quitter le plein écran"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
+                {/* Controls for admin and fullscreen header */}
+                <div className={`${isFullscreen ? 'mb-6' : 'mb-4'} flex flex-wrap justify-between items-center`}>
+                    <div className="flex items-center">
+                        <h2 className={`${isFullscreen ? 'text-2xl' : 'text-xl'} font-bold text-gray-800`}>
+                            {t(`activities.types.${currentActivity.type}`)}
+                        </h2>
+                    </div>
+                    <div className="flex space-x-2">
                         <button
                             onClick={toggleFullscreen}
                             className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center"
@@ -392,26 +482,45 @@ const SessionPage: React.FC = () => {
                             )}
                         </button>
 
-                        <button
-                            onClick={handleCompleteActivity}
-                            className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            {t('activities.completeActivity')}
-                        </button>
+                        {isSessionCreator && (
+                            <button
+                                onClick={handleCompleteActivity}
+                                className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                {t('activities.completeActivity')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Affichage des participants en cercles avec filtrage */}
+                {isFullscreen && (
+                    <div className="mb-6">
+                        <ParticipantCircles
+                            sessionId={sessionId}
+                            isFullscreen={true}
+                            selectedUser={selectedUser}
+                            onSelectUser={handleSelectUser}
+                        />
                     </div>
                 )}
 
-                {/* Board Component */}
-                <InteractiveBoard
-                    activityType={currentActivity.type as ActivityType | 'iceBreaker'}
-                    cards={session?.status !== 'closed' ? cards : []}
-                    onAddCard={handleAddCard}
-                    isReadOnly={isReadOnly}
-                    isAdmin={isSessionCreator}
-                />
+                {/* Board Component - utilisation de la prop isFullscreen */}
+                <div className={`${isFullscreen ? 'flex-grow' : ''}`}>
+                    <InteractiveBoard
+                        activityType={currentActivity.type as ActivityType | 'iceBreaker'}
+                        cards={session?.status !== 'closed' ? cards : []}
+                        onAddCard={handleAddCard}
+                        isReadOnly={isReadOnly}
+                        isAdmin={isSessionCreator}
+                        sessionId={sessionId}
+                        isFullscreen={isFullscreen}
+                        selectedAuthor={selectedUser}
+                    />
+                </div>
             </div>
         );
     };
@@ -520,6 +629,19 @@ const SessionPage: React.FC = () => {
                 error || !session ? renderError() :
                     renderSessionContent()
             }
+            {showDeleteModal && (
+                <ConfirmationModal
+                    isOpen={showDeleteModal}
+                    title={t('session.closeSession')}
+                    message={t('session.confirmCloseWarning')}
+                    confirmText={t('general.confirm')}
+                    cancelText={t('general.cancel')}
+                    onConfirm={handleConfirmDelete}
+                    onCancel={() => setShowDeleteModal(false)}
+                    type="danger"
+                    isLoading={isDeletingSession}
+                />
+            )}
         </div>
     );
 };
