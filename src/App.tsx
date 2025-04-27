@@ -9,7 +9,6 @@ import SessionPage from './pages/SessionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import NavBar from './components/layout/NavBar';
 import ErrorBoundary from "./components/commons/ErrorBoundary";
-import ActivityPage from "./pages/ActivityPage";
 import Button from "./components/commons/Button";
 
 function App() {

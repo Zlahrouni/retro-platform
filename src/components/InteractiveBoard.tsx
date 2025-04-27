@@ -25,8 +25,6 @@ const Column: React.FC<ColumnProps> = ({
                                            cards,
                                            onAddCard,
                                            isReadOnly,
-                                           isAdmin,
-                                           sessionId,
                                            selectedAuthor
                                        }) => {
     // Animation delay based on column index (for staggered entrance)
