@@ -1,36 +1,38 @@
 // src/services/iceBreakerService.ts
 import {
-    doc,
-    updateDoc,
-    getDoc,
-    serverTimestamp,
     collection,
+    doc,
     addDoc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    deleteDoc,
     query,
     where,
-    getDocs,
-    Timestamp
+    orderBy,
+    serverTimestamp,
+    onSnapshot,
+    Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Participant } from '../types/types';
 
-// Liste des questions pour "Question Fun Express"
-export const FUN_QUESTIONS = [
+// Interface for Fun Express Questions
+export interface FunExpressQuestion {
+    id: string;
+    fr: string;
+    en: string;
+    createdAt?: Timestamp | Date;
+    updatedAt?: Timestamp | Date;
+}
+
+// Old hardcoded questions as fallback
+export const FALLBACK_QUESTIONS = [
     { id: 'q1', fr: 'Si tu pouvais avoir un super pouvoir, lequel choisirais-tu et pourquoi?', en: 'If you could have one superpower, what would it be and why?' },
     { id: 'q2', fr: 'Quelle est ta plus grande fierté professionnelle?', en: 'What is your greatest professional achievement?' },
     { id: 'q3', fr: 'Quel est ton film préféré de tous les temps?', en: 'What is your favorite movie of all time?' },
     { id: 'q4', fr: 'Si tu pouvais dîner avec une personne célèbre, morte ou vivante, qui serait-ce?', en: 'If you could have dinner with any famous person, dead or alive, who would it be?' },
     { id: 'q5', fr: 'Quel est ton hobby ou passe-temps favori en dehors du travail?', en: 'What is your favorite hobby or pastime outside of work?' },
-    { id: 'q6', fr: 'Quelle est la destination de voyage de tes rêves?', en: 'What is your dream travel destination?' },
-    { id: 'q7', fr: 'Si tu pouvais maîtriser instantanément une compétence, laquelle choisirais-tu?', en: 'If you could instantly master one skill, what would it be?' },
-    { id: 'q8', fr: 'Quel conseil donnerais-tu à ton "toi" d\'il y a 5 ans?', en: 'What advice would you give to your 5-years-ago self?' },
-    { id: 'q9', fr: 'Quelle est la meilleure leçon professionnelle que tu as apprise?', en: 'What is the best professional lesson you\'ve learned?' },
-    { id: 'q10', fr: 'Qu\'est-ce qui te fait rire à tous les coups?', en: 'What never fails to make you laugh?' },
-    { id: 'q11', fr: 'Quelle application utilises-tu le plus sur ton téléphone?', en: 'What app do you use the most on your phone?' },
-    { id: 'q12', fr: 'Si tu pouvais visiter n\'importe quelle époque historique, laquelle choisirais-tu?', en: 'If you could visit any historical time period, which would you choose?' },
-    { id: 'q13', fr: 'Quel est ton petit plaisir coupable?', en: 'What is your guilty pleasure?' },
-    { id: 'q14', fr: 'Si tu pouvais être un personnage fictif pour une journée, lequel serais-tu?', en: 'If you could be any fictional character for a day, who would you be?' },
-    { id: 'q15', fr: 'Quel est le meilleur conseil que tu aies jamais reçu?', en: 'What\'s the best piece of advice you\'ve ever received?' }
 ];
 
 export interface CurrentTurn {
@@ -45,6 +47,43 @@ export interface CurrentTurn {
 
 // Service pour gérer les ice-breakers
 export const iceBreakerService = {
+    // Fetch questions from Firebase
+    async getFunExpressQuestions(): Promise<FunExpressQuestion[]> {
+        try {
+            console.log("Fetching questions from Firebase...");
+            const questionsRef = collection(db, 'questionFunExpress');
+            const q = query(questionsRef, orderBy('createdAt', 'asc'));
+            const querySnapshot = await getDocs(q);
+
+            const questions: FunExpressQuestion[] = [];
+
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                questions.push({
+                    id: data.id || doc.id,
+                    fr: data.fr,
+                    en: data.en,
+                    createdAt: data.createdAt,
+                    updatedAt: data.updatedAt
+                });
+            });
+
+            console.log(`Fetched ${questions.length} questions from Firebase`);
+
+            // If no questions found, use fallback
+            if (questions.length === 0) {
+                console.log("No questions found in Firebase, using fallback questions");
+                return FALLBACK_QUESTIONS;
+            }
+
+            return questions;
+        } catch (error) {
+            console.error("Error fetching questions from Firebase:", error);
+            // Return fallback questions in case of error
+            return FALLBACK_QUESTIONS;
+        }
+    },
+
     // Initialiser une activité "Question Fun Express" avec un premier joueur et une première question
     async initializeQuestionFunExpress(activityId: string, participants: Participant[]): Promise<boolean> {
         try {
@@ -53,12 +92,15 @@ export const iceBreakerService = {
                 return false;
             }
 
+            // Fetch questions from Firebase
+            const questions = await this.getFunExpressQuestions();
+
             // Sélectionner aléatoirement un joueur et une question
             const randomPlayerIndex = Math.floor(Math.random() * participants.length);
             const randomPlayer = participants[randomPlayerIndex];
 
-            const randomQuestionIndex = Math.floor(Math.random() * FUN_QUESTIONS.length);
-            const randomQuestion = FUN_QUESTIONS[randomQuestionIndex];
+            const randomQuestionIndex = Math.floor(Math.random() * questions.length);
+            const randomQuestion = questions[randomQuestionIndex];
 
             // Créer le nouveau tour
             const newTurn: CurrentTurn = {
@@ -97,8 +139,11 @@ export const iceBreakerService = {
         }
 
         try {
+            // Fetch questions from Firebase
+            const allQuestions = await this.getFunExpressQuestions();
+
             // Trouver une question qui n'a pas encore été posée
-            const availableQuestions = FUN_QUESTIONS.filter(q =>
+            const availableQuestions = allQuestions.filter(q =>
                 !currentData.askedQuestions.includes(q.id)
             );
 
@@ -108,7 +153,7 @@ export const iceBreakerService = {
 
             if (availableQuestions.length === 0) {
                 // Trouver une question différente de la dernière
-                const questionsExceptCurrent = FUN_QUESTIONS.filter(q =>
+                const questionsExceptCurrent = allQuestions.filter(q =>
                     q.id !== currentData.currentTurn.questionId
                 );
                 const randomIndex = Math.floor(Math.random() * questionsExceptCurrent.length);
@@ -176,8 +221,11 @@ export const iceBreakerService = {
             const randomPlayerIndex = Math.floor(Math.random() * availablePlayers.length);
             const newPlayer = availablePlayers[randomPlayerIndex];
 
+            // Fetch questions from Firebase
+            const allQuestions = await this.getFunExpressQuestions();
+
             // Trouver une question qui n'a pas encore été posée
-            const availableQuestions = FUN_QUESTIONS.filter(q =>
+            const availableQuestions = allQuestions.filter(q =>
                 !currentData.askedQuestions.includes(q.id)
             );
 
@@ -186,8 +234,8 @@ export const iceBreakerService = {
             let updatedAskedQuestions = [...currentData.askedQuestions];
 
             if (availableQuestions.length === 0) {
-                const randomQuestionIndex = Math.floor(Math.random() * FUN_QUESTIONS.length);
-                newQuestion = FUN_QUESTIONS[randomQuestionIndex];
+                const randomQuestionIndex = Math.floor(Math.random() * allQuestions.length);
+                newQuestion = allQuestions[randomQuestionIndex];
             } else {
                 const randomQuestionIndex = Math.floor(Math.random() * availableQuestions.length);
                 newQuestion = availableQuestions[randomQuestionIndex];
@@ -232,12 +280,15 @@ export const iceBreakerService = {
                 return false;
             }
 
+            // Fetch questions from Firebase
+            const questions = await this.getFunExpressQuestions();
+
             // Réinitialiser le jeu avec un nouveau joueur et une nouvelle question
             const randomPlayerIndex = Math.floor(Math.random() * participants.length);
             const randomPlayer = participants[randomPlayerIndex];
 
-            const randomQuestionIndex = Math.floor(Math.random() * FUN_QUESTIONS.length);
-            const randomQuestion = FUN_QUESTIONS[randomQuestionIndex];
+            const randomQuestionIndex = Math.floor(Math.random() * questions.length);
+            const randomQuestion = questions[randomQuestionIndex];
 
             // Créer le nouveau tour
             const newTurn: CurrentTurn = {

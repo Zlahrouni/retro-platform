@@ -1,31 +1,12 @@
-// src/components/icebreakers/QuestionFunExpress.tsx
+// src/components/activities/icebreakers/QuestionFunExpress.tsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import ParticipantProgress from './ParticipantProgress';
 import './QuestionFunAnimations.css';
-import {db} from "../../../config/firebase";
-import {Participant} from "../../../types/types";
-
-// Questions pour le jeu (à remplacer par les questions fournies)
-const QUESTIONS = [
-    { id: 'q1', fr: 'Si tu pouvais avoir un super pouvoir, lequel choisirais-tu et pourquoi?', en: 'If you could have one superpower, what would it be and why?' },
-    { id: 'q2', fr: 'Quelle est ta plus grande fierté professionnelle?', en: 'What is your greatest professional achievement?' },
-    { id: 'q3', fr: 'Quel est ton film préféré de tous les temps?', en: 'What is your favorite movie of all time?' },
-    { id: 'q4', fr: 'Si tu pouvais dîner avec une personne célèbre, morte ou vivante, qui serait-ce?', en: 'If you could have dinner with any famous person, dead or alive, who would it be?' },
-    { id: 'q5', fr: 'Quel est ton hobby ou passe-temps favori en dehors du travail?', en: 'What is your favorite hobby or pastime outside of work?' },
-    { id: 'q6', fr: 'Quelle est la destination de voyage de tes rêves?', en: 'What is your dream travel destination?' },
-    { id: 'q7', fr: 'Si tu pouvais maîtriser instantanément une compétence, laquelle choisirais-tu?', en: 'If you could instantly master one skill, what would it be?' },
-    { id: 'q8', fr: 'Quel conseil donnerais-tu à ton "toi" d\'il y a 5 ans?', en: 'What advice would you give to your 5-years-ago self?' },
-    { id: 'q9', fr: 'Quelle est la meilleure leçon professionnelle que tu as apprise?', en: 'What is the best professional lesson you\'ve learned?' },
-    { id: 'q10', fr: 'Qu\'est-ce qui te fait rire à tous les coups?', en: 'What never fails to make you laugh?' }
-];
-
-interface Question {
-    id: string;
-    fr: string;
-    en: string;
-}
+import { db } from "../../../config/firebase";
+import { Participant } from "../../../types/types";
+import { iceBreakerService, FunExpressQuestion } from '../../../services/iceBreakerService';
 
 interface CurrentTurn {
     playerId: string;
@@ -64,6 +45,23 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
     const [isChanging, setIsChanging] = useState(false);
     const { t, i18n } = useTranslation();
     const currentLanguage = i18n.language;
+    const [questions, setQuestions] = useState<FunExpressQuestion[]>([]);
+
+    // Fetch questions from Firebase
+    useEffect(() => {
+        const fetchQuestions = async () => {
+            try {
+                const fetchedQuestions = await iceBreakerService.getFunExpressQuestions();
+                setQuestions(fetchedQuestions);
+                console.log("Fetched questions:", fetchedQuestions.length);
+            } catch (err) {
+                console.error("Error fetching questions:", err);
+                // We'll use the fallback questions from the service
+            }
+        };
+
+        fetchQuestions();
+    }, []);
 
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
@@ -144,34 +142,17 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
                 return;
             }
 
-            // Sélectionner aléatoirement un joueur et une question
-            const randomPlayerIndex = Math.floor(Math.random() * participants.length);
-            const randomPlayer = participants[randomPlayerIndex];
+            if (questions.length === 0) {
+                const fetchedQuestions = await iceBreakerService.getFunExpressQuestions();
+                setQuestions(fetchedQuestions);
+            }
 
-            const randomQuestionIndex = Math.floor(Math.random() * QUESTIONS.length);
-            const randomQuestion = QUESTIONS[randomQuestionIndex];
+            // Use iceBreakerService to initialize the game
+            const success = await iceBreakerService.initializeQuestionFunExpress(activityId, participants);
 
-            // Créer le nouveau tour
-            const newTurn: CurrentTurn = {
-                playerId: randomPlayer.id,
-                playerName: randomPlayer.username,
-                questionId: randomQuestion.id,
-                question: {
-                    fr: randomQuestion.fr,
-                    en: randomQuestion.en
-                }
-            };
-
-            // Mettre à jour Firestore
-            const activityRef = doc(db, 'activities', activityId);
-            await updateDoc(activityRef, {
-                askedQuestions: [randomQuestion.id],
-                askedPlayers: [randomPlayer.id],
-                currentTurn: newTurn,
-                allPlayersAsked: false
-            });
-
-            // Pas besoin de mettre à jour l'état local car le listener s'en chargera
+            if (!success) {
+                setError("Erreur lors de l'initialisation du jeu");
+            }
         } catch (err) {
             console.error("Erreur lors de l'initialisation du jeu:", err);
             setError("Erreur lors de l'initialisation du jeu");
@@ -184,46 +165,7 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
 
         try {
             setIsChanging(true);
-
-            // Trouver une question qui n'a pas encore été posée
-            const availableQuestions = QUESTIONS.filter(q =>
-                !activityData.askedQuestions.includes(q.id)
-            );
-
-            // Si toutes les questions ont été posées, réutiliser une question (sauf la dernière posée)
-            let newQuestion;
-            let updatedAskedQuestions = [...activityData.askedQuestions];
-
-            if (availableQuestions.length === 0) {
-                // Trouver une question différente de la dernière
-                const questionsExceptCurrent = QUESTIONS.filter(q => q.id !== activityData.currentTurn!.questionId);
-                const randomIndex = Math.floor(Math.random() * questionsExceptCurrent.length);
-                newQuestion = questionsExceptCurrent[randomIndex];
-            } else {
-                // Sélectionner une nouvelle question au hasard
-                const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-                newQuestion = availableQuestions[randomIndex];
-                updatedAskedQuestions.push(newQuestion.id);
-            }
-
-            // Mettre à jour avec la nouvelle question
-            const newTurn: CurrentTurn = {
-                ...activityData.currentTurn,
-                questionId: newQuestion.id,
-                question: {
-                    fr: newQuestion.fr,
-                    en: newQuestion.en
-                }
-            };
-
-            // Mettre à jour Firestore
-            const activityRef = doc(db, 'activities', activityId);
-            await updateDoc(activityRef, {
-                askedQuestions: updatedAskedQuestions,
-                currentTurn: newTurn
-            });
-
-            // Le listener s'occupera de mettre à jour l'UI
+            await iceBreakerService.changeQuestion(activityId, activityData);
         } catch (err) {
             console.error("Erreur lors du changement de question:", err);
             setError("Erreur lors du changement de question");
@@ -238,67 +180,7 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
 
         try {
             setIsChanging(true);
-
-            // Trouver les joueurs qui n'ont pas encore été interrogés
-            const availablePlayers = participants.filter(p =>
-                !activityData.askedPlayers.includes(p.id)
-            );
-
-            // Vérifier si tous les joueurs ont été interrogés
-            if (availablePlayers.length === 0) {
-                // Si tous les joueurs ont été interrogés, mettre à jour le statut
-                const activityRef = doc(db, 'activities', activityId);
-                await updateDoc(activityRef, {
-                    allPlayersAsked: true
-                });
-
-                return;
-            }
-
-            // Sélectionner un nouveau joueur au hasard
-            const randomPlayerIndex = Math.floor(Math.random() * availablePlayers.length);
-            const newPlayer = availablePlayers[randomPlayerIndex];
-
-            // Trouver une question qui n'a pas encore été posée
-            const availableQuestions = QUESTIONS.filter(q =>
-                !activityData.askedQuestions.includes(q.id)
-            );
-
-            // Si toutes les questions ont été posées, réutiliser une question au hasard
-            let newQuestion;
-            let updatedAskedQuestions = [...activityData.askedQuestions];
-
-            if (availableQuestions.length === 0) {
-                const randomQuestionIndex = Math.floor(Math.random() * QUESTIONS.length);
-                newQuestion = QUESTIONS[randomQuestionIndex];
-            } else {
-                const randomQuestionIndex = Math.floor(Math.random() * availableQuestions.length);
-                newQuestion = availableQuestions[randomQuestionIndex];
-                updatedAskedQuestions.push(newQuestion.id);
-            }
-
-            // Créer le nouveau tour
-            const newTurn: CurrentTurn = {
-                playerId: newPlayer.id,
-                playerName: newPlayer.username,
-                questionId: newQuestion.id,
-                question: {
-                    fr: newQuestion.fr,
-                    en: newQuestion.en
-                }
-            };
-
-            const updatedAskedPlayers = [...activityData.askedPlayers, newPlayer.id];
-
-            // Mettre à jour Firestore
-            const activityRef = doc(db, 'activities', activityId);
-            await updateDoc(activityRef, {
-                askedQuestions: updatedAskedQuestions,
-                askedPlayers: updatedAskedPlayers,
-                currentTurn: newTurn
-            });
-
-            // Le listener s'occupera de mettre à jour l'UI
+            await iceBreakerService.changePlayer(activityId, activityData, participants);
         } catch (err) {
             console.error("Erreur lors du changement de joueur:", err);
             setError("Erreur lors du changement de joueur");
@@ -311,35 +193,7 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
     const handleRestart = async () => {
         try {
             setIsChanging(true);
-
-            // Réinitialiser le jeu avec un nouveau joueur et une nouvelle question
-            const randomPlayerIndex = Math.floor(Math.random() * participants.length);
-            const randomPlayer = participants[randomPlayerIndex];
-
-            const randomQuestionIndex = Math.floor(Math.random() * QUESTIONS.length);
-            const randomQuestion = QUESTIONS[randomQuestionIndex];
-
-            // Créer le nouveau tour
-            const newTurn: CurrentTurn = {
-                playerId: randomPlayer.id,
-                playerName: randomPlayer.username,
-                questionId: randomQuestion.id,
-                question: {
-                    fr: randomQuestion.fr,
-                    en: randomQuestion.en
-                }
-            };
-
-            // Mettre à jour Firestore
-            const activityRef = doc(db, 'activities', activityId);
-            await updateDoc(activityRef, {
-                askedQuestions: [randomQuestion.id],
-                askedPlayers: [randomPlayer.id],
-                currentTurn: newTurn,
-                allPlayersAsked: false
-            });
-
-            // Le listener s'occupera de mettre à jour l'UI
+            await iceBreakerService.restartGame(activityId, participants);
         } catch (err) {
             console.error("Erreur lors du redémarrage du jeu:", err);
             setError("Erreur lors du redémarrage du jeu");
@@ -394,12 +248,12 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
                             >
                                 {isChanging ? (
                                     <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Chargement...
-                  </span>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Chargement...
+                                    </span>
                                 ) : (
                                     <>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 emoji-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
