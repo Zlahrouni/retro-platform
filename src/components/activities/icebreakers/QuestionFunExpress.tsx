@@ -1,7 +1,7 @@
 // src/components/activities/icebreakers/QuestionFunExpress.tsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import ParticipantProgress from './ParticipantProgress';
 import './QuestionFunAnimations.css';
 import { db } from "../../../config/firebase";
@@ -43,7 +43,7 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isChanging, setIsChanging] = useState(false);
-    const { t, i18n } = useTranslation();
+    const { i18n } = useTranslation();
     const currentLanguage = i18n.language;
     const [questions, setQuestions] = useState<FunExpressQuestion[]>([]);
 
@@ -320,7 +320,7 @@ const QuestionFunExpress: React.FC<QuestionFunExpressProps> = ({
                         </div>
                     </div>
 
-                    {/* Pied de la carte - uniquement pour les admins */}
+                    {/* Pied de la carte uniquement pour les admins */}
                     {isAdmin && (
                         <div className="bg-white bg-opacity-20 p-4 flex justify-center space-x-4">
                             <button
