@@ -108,7 +108,7 @@ const Column: React.FC<ColumnProps> = ({
             </div>
 
             {/* Cards Container */}
-            <div className="flex-grow p-3 overflow-y-auto bg-gray-50 space-y-3 min-h-[200px]">
+            <div className="flex-grow p-3 overflow-y-auto bg-gray-50 space-y-3 min-h-[200px] max-h-[600px]">
                 {filteredCards.length > 0 ? (
                     filteredCards.map((card, index) => (
                         <div
@@ -359,7 +359,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
     const getColumnWidthClass = () => {
         switch(columns.length) {
             case 2: return isFullscreen ? 'w-1/2' : 'md:w-1/2';
-            case 3: return isFullscreen ? 'w-1/3' : 'md:w-1/3';
+            case 3: return isFullscreen ? 'w-1/3' : 'w-full md:w-1/3';
             case 4: return isFullscreen ? 'w-1/4' : 'md:w-1/2 lg:w-1/4';
             default: return 'w-full';
         }
@@ -428,7 +428,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
             </div>
 
             {/* Columns Container */}
-            <div className={`flex flex-col md:flex-row flex-wrap gap-4 ${isFullscreen ? 'h-full' : 'min-h-[500px]'} relative`}>
+            <div className={`flex flex-col md:flex-row flex-wrap md:flex-nowrap gap-4 ${isFullscreen ? 'h-full' : 'min-h-[500px]'} relative justify-center`}>
                 {/* Background decoration (subtle grid pattern) */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none"
                      style={{
@@ -443,7 +443,7 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                     </div>
                 ) : (
                     columns.map(columnType => (
-                        <div key={columnType} className={`${getColumnWidthClass()} h-96 md:h-auto`}>
+                        <div key={columnType} className={`${getColumnWidthClass()} h-96 md:h-auto mx-auto md:mx-0`}>
                             <Column
                                 title={t(`activities.columns.${activityType}.${columnType}`)}
                                 columnType={columnType}
