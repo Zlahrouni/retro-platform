@@ -1,49 +1,12 @@
-// src/hooks/useSession.ts
+// src/hooks/useSession.ts - Mise à jour avec visibilité des cartes
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sessionsService, cardsService } from '../services/firebaseService';
 import { userService } from '../services/userService';
-import { Session, Card, ActivityType, ColumnType } from '../types/types';
+import { Session, Card, ColumnType } from '../types/types';
 
-// Hook pour créer une session
-export const useCreateSession = () => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
-
-    const createSession = async (activityType: ActivityType, userName?: string) => {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            // Stocker le nom d'utilisateur si fourni (pour s'assurer qu'il est défini avant de créer la session)
-            if (userName && userName.trim()) {
-                userService.setUserName(userName.trim());
-            } else if (!userService.hasUserName()) {
-                // Si aucun nom n'est fourni et qu'il n'y en a pas déjà un, afficher une erreur
-                setError('Le nom d\'utilisateur est obligatoire');
-                setIsLoading(false);
-                return;
-            }
-
-            // Créer la session - la fonction createSession récupère maintenant directement le nom depuis userService
-            const sessionId = await sessionsService.createSession();
-
-            // Rediriger vers la page de session
-            navigate(`/session/${sessionId}`);
-        } catch (err) {
-            console.error('Failed to create session:', err);
-            setError('Impossible de créer la session. Veuillez réessayer.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return { createSession, isLoading, error };
-};
-
-// Hook pour charger et écouter une session
-// Hook pour charger et écouter une session
+// Hook pour charger et écouter une session avec gestion de la visibilité des cartes
 export const useSession = (sessionId?: string) => {
     const [session, setSession] = useState<Session | null>(null);
     const [cards, setCards] = useState<Card[]>([]);
@@ -100,17 +63,6 @@ export const useSession = (sessionId?: string) => {
     }, []);
 
     useEffect(() => {
-        if (session) {
-            // Déboguer les données de session reçues
-            console.log("Session mise à jour:", {
-                id: session.id,
-                status: session.status,
-                currentActivityId: session.currentActivityId
-            });
-        }
-    }, [session]);
-
-    useEffect(() => {
         if (!sessionId) {
             setIsLoading(false);
             return;
@@ -147,9 +99,15 @@ export const useSession = (sessionId?: string) => {
                     }
                 }
 
-                // 2. Chargement des cartes initiales
+                // 2. Chargement des cartes initiales avec prise en compte de la visibilité
                 try {
-                    const initialCards = await cardsService.getCardsBySession(sessionId);
+                    const userName = userService.getUserName();
+                    const isAdmin = initialSession && (
+                        initialSession.adminId === userName ||
+                        initialSession.createdBy === userName
+                    );
+
+                    const initialCards = await cardsService.getCardsBySessionWithVisibility(sessionId, isAdmin || false);
 
                     if (isMounted.current) {
                         setCards(initialCards);
@@ -182,14 +140,27 @@ export const useSession = (sessionId?: string) => {
                     // Continuer même en cas d'erreur de configuration du listener
                 }
 
-                // 4. Observer pour les mises à jour de cartes
+                // 4. Observer pour les mises à jour de cartes avec visibilité
                 try {
                     unsubscribeCards = cardsService.onCardsUpdate(
                         sessionId,
                         (updatedCards) => {
                             if (!isMounted.current) return;
 
-                            setCards(updatedCards);
+                            // Filtrer les cartes selon les droits de l'utilisateur
+                            const userName = userService.getUserName();
+                            const currentSession = sessionRef.current;
+                            const isAdmin = currentSession && (
+                                currentSession.adminId === userName ||
+                                currentSession.createdBy === userName
+                            );
+
+                            // Si l'utilisateur n'est pas admin, ne montrer que les cartes visibles
+                            const filteredCards = isAdmin
+                                ? updatedCards
+                                : updatedCards.filter(card => card.isVisible !== false);
+
+                            setCards(filteredCards);
                         }
                     );
                 } catch (cardsListenerError) {
@@ -225,9 +196,9 @@ export const useSession = (sessionId?: string) => {
                 }
             }
         };
-    }, [sessionId, navigate]); // Pas besoin d'ajouter session comme dépendance grâce à sessionRef
+    }, [sessionId, navigate]);
 
-    // Fonction pour ajouter une carte avec gestion optimiste
+    // Fonction pour ajouter une carte avec gestion de la visibilité
     const addCard = useCallback(async (text: string, type: ColumnType) => {
         const currentSessionId = sessionIdRef.current;
         if (!currentSessionId || !text.trim()) return;
@@ -249,6 +220,10 @@ export const useSession = (sessionId?: string) => {
 
             const userName = userService.getUserName();
 
+            // Déterminer la visibilité initiale de la carte
+            // Si cardsVisible est défini dans la session, l'utiliser, sinon par défaut masqué
+            const isVisible = currentSession?.cardsVisible === true;
+
             // Créer un objet temporaire pour la mise à jour optimiste de l'UI
             const tempCard: Card = {
                 id: 'temp_' + Date.now(),
@@ -256,21 +231,28 @@ export const useSession = (sessionId?: string) => {
                 text: text.trim(),
                 type,
                 author: userName,
-                createdAt: new Date()
+                createdAt: new Date(),
+                isVisible: isVisible
             };
 
-            // Ajouter temporairement la carte à l'UI
-            if (isMounted.current) {
+            // Ajouter temporairement la carte à l'UI si l'utilisateur peut la voir
+            const isAdmin = currentSession && (
+                currentSession.adminId === userName ||
+                currentSession.createdBy === userName
+            );
+
+            if (isMounted.current && (isAdmin || isVisible)) {
                 setCards(prevCards => [...prevCards, tempCard]);
             }
 
             try {
-                // Ajouter réellement la carte dans Firebase
-                await cardsService.addCard(
+                // Ajouter réellement la carte dans Firebase avec la visibilité appropriée
+                await cardsService.addCardWithVisibility(
                     currentSessionId,
                     text,
                     type,
-                    userName
+                    userName,
+                    isVisible
                 );
 
                 console.log("Carte ajoutée avec succès dans Firebase");
@@ -296,6 +278,70 @@ export const useSession = (sessionId?: string) => {
             }
         }
     }, []);
+
+    // Fonction pour basculer la visibilité globale des cartes
+    const toggleCardsVisibility = useCallback(async (visible: boolean) => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId || !isSessionCreator) return;
+
+        try {
+            await sessionsService.setSessionCardsVisibility(currentSessionId, visible);
+            console.log(`Visibilité globale des cartes définie à: ${visible}`);
+        } catch (err) {
+            console.error('Erreur lors de la modification de la visibilité globale:', err);
+            if (isMounted.current) {
+                setError("Erreur lors de la modification de la visibilité des cartes");
+            }
+        }
+    }, [isSessionCreator]);
+
+    // Fonction pour révéler toutes les cartes
+    const revealAllCards = useCallback(async () => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId || !isSessionCreator) return;
+
+        try {
+            await cardsService.revealAllCards(currentSessionId);
+            console.log("Toutes les cartes ont été révélées");
+        } catch (err) {
+            console.error('Erreur lors de la révélation de toutes les cartes:', err);
+            if (isMounted.current) {
+                setError("Erreur lors de la révélation des cartes");
+            }
+        }
+    }, [isSessionCreator]);
+
+    // Fonction pour masquer toutes les cartes
+    const hideAllCards = useCallback(async () => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId || !isSessionCreator) return;
+
+        try {
+            await cardsService.hideAllCards(currentSessionId);
+            console.log("Toutes les cartes ont été masquées");
+        } catch (err) {
+            console.error('Erreur lors du masquage de toutes les cartes:', err);
+            if (isMounted.current) {
+                setError("Erreur lors du masquage des cartes");
+            }
+        }
+    }, [isSessionCreator]);
+
+    // Fonction pour basculer la visibilité d'une colonne
+    const toggleColumnVisibility = useCallback(async (columnType: ColumnType, visible: boolean) => {
+        const currentSessionId = sessionIdRef.current;
+        if (!currentSessionId || !isSessionCreator) return;
+
+        try {
+            await cardsService.toggleColumnCardsVisibility(currentSessionId, columnType, visible);
+            console.log(`Visibilité de la colonne ${columnType} définie à: ${visible}`);
+        } catch (err) {
+            console.error('Erreur lors de la modification de la visibilité de la colonne:', err);
+            if (isMounted.current) {
+                setError("Erreur lors de la modification de la visibilité de la colonne");
+            }
+        }
+    }, [isSessionCreator]);
 
     const setCurrentActivity = useCallback(async (activityId: string | null): Promise<boolean> => {
         const currentSessionId = sessionIdRef.current;
@@ -389,6 +435,11 @@ export const useSession = (sessionId?: string) => {
         resumeSession,
         getCardsByType,
         isSessionCreator,
-        setCurrentActivity
+        setCurrentActivity,
+        // Nouvelles fonctions pour la visibilité
+        toggleCardsVisibility,
+        revealAllCards,
+        hideAllCards,
+        toggleColumnVisibility
     };
 };

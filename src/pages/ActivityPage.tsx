@@ -1,12 +1,14 @@
-// src/pages/ActivityPage.tsx
+// src/pages/ActivityPage.tsx - Version complète avec visibilité des cartes
+
 import React, {useState, useEffect, useCallback} from 'react';
 import {useParams, useNavigate, useLocation} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '../hooks/useSession';
 import { useActivities } from '../hooks/useActivities';
 import { userService } from '../services/userService';
+import { cardsService } from '../services/firebaseService';
 import { ActivityData } from '../services/activitiesService';
-import { ActivityType, ColumnType } from '../types/types';
+import { ActivityType, ColumnType, Card } from '../types/types';
 import SessionControls from '../components/session/SessionControls';
 import ParticipantsList from '../components/session/ParticipantsList';
 import SessionStatusBanner from '../components/session/SessionStatusBanner';
@@ -37,10 +39,15 @@ const ActivityPage: React.FC = () => {
     const [isCompletingActivity, setIsCompletingActivity] = useState(false);
     const [showNavigationModal, setShowNavigationModal] = useState(false);
 
+    // États pour la gestion de la visibilité des cartes
+    const [allCards, setAllCards] = useState<Card[]>([]); // Toutes les cartes (pour l'admin)
+    const [cardsVisibilityLoading, setCardsVisibilityLoading] = useState(false);
+
     const openCompleteActivityModal = useCallback(() => {
         setShowCompleteActivityModal(true);
     }, []);
-    // Get session data
+
+    // Get session data avec les nouvelles fonctions de visibilité
     const {
         session,
         cards,
@@ -51,7 +58,12 @@ const ActivityPage: React.FC = () => {
         resumeSession,
         isSessionCreator,
         addCard,
-        setCurrentActivity: setSessionCurrentActivity
+        setCurrentActivity: setSessionCurrentActivity,
+        // Nouvelles fonctions pour la visibilité
+        toggleCardsVisibility,
+        revealAllCards,
+        hideAllCards,
+        toggleColumnVisibility
     } = useSession(sessionId);
 
     // Get activities
@@ -65,6 +77,110 @@ const ActivityPage: React.FC = () => {
     // Combined loading state
     const isLoading = sessionLoading || activitiesLoading;
     const error = sessionError || activitiesError;
+
+    // Charger toutes les cartes pour l'admin
+    useEffect(() => {
+        if (isSessionCreator && sessionId) {
+            const loadAllCards = async () => {
+                try {
+                    const allCardsData = await cardsService.getCardsBySessionWithVisibility(sessionId, true);
+                    setAllCards(allCardsData);
+                } catch (err) {
+                    console.error("Erreur lors du chargement de toutes les cartes:", err);
+                }
+            };
+
+            loadAllCards();
+        }
+    }, [isSessionCreator, sessionId, cards]); // Recharger quand les cartes changent
+
+    // Fonction pour basculer la visibilité d'une carte individuelle
+    const handleToggleCardVisibility = useCallback(async (cardId: string, isVisible: boolean) => {
+        if (!isSessionCreator) return;
+
+        try {
+            setCardsVisibilityLoading(true);
+            await cardsService.toggleCardVisibility(cardId, isVisible);
+
+            // Mettre à jour les cartes localement pour une réponse immédiate
+            setAllCards(prevCards =>
+                prevCards.map(card =>
+                    card.id === cardId ? { ...card, isVisible } : card
+                )
+            );
+
+            toast.success(`Carte ${isVisible ? 'révélée' : 'masquée'} avec succès`);
+        } catch (err) {
+            console.error("Erreur lors de la modification de la visibilité de la carte:", err);
+            toast.error("Erreur lors de la modification de la visibilité de la carte");
+        } finally {
+            setCardsVisibilityLoading(false);
+        }
+    }, [isSessionCreator]);
+
+    // Fonction pour basculer la visibilité globale
+    const handleToggleGlobalVisibility = useCallback(async (visible: boolean) => {
+        if (!isSessionCreator) return;
+
+        try {
+            setCardsVisibilityLoading(true);
+            await toggleCardsVisibility(visible);
+            toast.success(`Cartes ${visible ? 'révélées' : 'masquées'} pour tous les participants`);
+        } catch (err) {
+            console.error("Erreur lors de la modification de la visibilité globale:", err);
+            toast.error("Erreur lors de la modification de la visibilité");
+        } finally {
+            setCardsVisibilityLoading(false);
+        }
+    }, [isSessionCreator, toggleCardsVisibility]);
+
+    // Fonction pour révéler toutes les cartes
+    const handleRevealAllCards = useCallback(async () => {
+        if (!isSessionCreator) return;
+
+        try {
+            setCardsVisibilityLoading(true);
+            await revealAllCards();
+            toast.success("Toutes les cartes ont été révélées");
+        } catch (err) {
+            console.error("Erreur lors de la révélation des cartes:", err);
+            toast.error("Erreur lors de la révélation des cartes");
+        } finally {
+            setCardsVisibilityLoading(false);
+        }
+    }, [isSessionCreator, revealAllCards]);
+
+    // Fonction pour masquer toutes les cartes
+    const handleHideAllCards = useCallback(async () => {
+        if (!isSessionCreator) return;
+
+        try {
+            setCardsVisibilityLoading(true);
+            await hideAllCards();
+            toast.success("Toutes les cartes ont été masquées");
+        } catch (err) {
+            console.error("Erreur lors du masquage des cartes:", err);
+            toast.error("Erreur lors du masquage des cartes");
+        } finally {
+            setCardsVisibilityLoading(false);
+        }
+    }, [isSessionCreator, hideAllCards]);
+
+    // Fonction pour basculer la visibilité d'une colonne
+    const handleToggleColumnVisibility = useCallback(async (columnType: ColumnType, visible: boolean) => {
+        if (!isSessionCreator) return;
+
+        try {
+            setCardsVisibilityLoading(true);
+            await toggleColumnVisibility(columnType, visible);
+            toast.success(`Colonne "${t(`activities.columns.${currentActivity?.type}.${columnType}`)}" ${visible ? 'révélée' : 'masquée'}`);
+        } catch (err) {
+            console.error("Erreur lors de la modification de la visibilité de la colonne:", err);
+            toast.error("Erreur lors de la modification de la visibilité de la colonne");
+        } finally {
+            setCardsVisibilityLoading(false);
+        }
+    }, [isSessionCreator, toggleColumnVisibility, currentActivity, t]);
 
     useEffect(() => {
         if (directAccess && activityId && !currentActivity && !activitiesLoading) {
@@ -384,22 +500,19 @@ const ActivityPage: React.FC = () => {
                                 Retour à la session
                             </Button>
 
-                            {/* Bouton Terminer désactivé temporairement pour les admins */}
-                            {isSessionCreator && (
-                                <Button
-                                    variant="success"
-                                    onClick={openCompleteActivityModal}
-                                    icon={
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    }
-                                    className="p-2 opacity-50"
-                                    disabled={true} // Temporairement désactivé
-                                >
-                                    {t('activities.completeActivity')}
-                                </Button>
-                            )}
+                            {/* Bouton Terminer l'activité pour les admins */}
+                            <Button
+                                variant="success"
+                                onClick={openCompleteActivityModal}
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                }
+                                className="p-2"
+                            >
+                                {t('activities.completeActivity')}
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -416,13 +529,24 @@ const ActivityPage: React.FC = () => {
             {/* Participants list */}
             {sessionId && <ParticipantsList sessionId={sessionId} />}
 
-            {/* Interactive board component */}
+            {/* Interactive board component avec les nouvelles props de visibilité */}
             <InteractiveBoard
                 activityType={currentActivity.type as ActivityType | 'iceBreaker'}
                 cards={cards}
+                allCards={isSessionCreator ? allCards : undefined}
                 onAddCard={handleAddCard}
                 isReadOnly={isReadOnly}
                 isAdmin={isSessionCreator}
+                sessionId={sessionId}
+                activity={currentActivity}
+                participants={session?.participants || []}
+                // Nouvelles props pour la visibilité
+                cardsVisible={session?.cardsVisible}
+                onToggleCardsVisibility={handleToggleGlobalVisibility}
+                onToggleColumnVisibility={handleToggleColumnVisibility}
+                onRevealAllCards={handleRevealAllCards}
+                onHideAllCards={handleHideAllCards}
+                onToggleCardVisibility={handleToggleCardVisibility}
             />
 
             {/* Share message */}
@@ -432,6 +556,7 @@ const ActivityPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Modal de confirmation pour terminer l'activité */}
             {showCompleteActivityModal && (
                 <ConfirmationModal
                     isOpen={showCompleteActivityModal}
@@ -446,6 +571,19 @@ const ActivityPage: React.FC = () => {
                 />
             )}
 
+            {/* Modal de navigation après completion */}
+            {showNavigationModal && (
+                <ConfirmationModal
+                    isOpen={showNavigationModal}
+                    title="Activité terminée"
+                    message="L'activité a été terminée avec succès. Souhaitez-vous retourner à la page de session ou rester ici ?"
+                    confirmText="Retourner à la session"
+                    cancelText="Rester ici"
+                    onConfirm={handleReturnToSession}
+                    onCancel={handleStayOnActivity}
+                    type="info"
+                />
+            )}
         </div>
     );
 };

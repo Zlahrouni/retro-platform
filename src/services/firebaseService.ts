@@ -63,6 +63,46 @@ export const sessionsService = {
         return docRef.id;
     },
 
+    async setSessionCardsVisibility(sessionId: string, visible: boolean): Promise<boolean> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour la mise à jour de la visibilité des cartes");
+            return false;
+        }
+
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+            await updateDoc(sessionRef, {
+                cardsVisible: visible,
+                lastUpdated: serverTimestamp()
+            });
+            console.log(`Visibilité des cartes de la session ${sessionId} définie à: ${visible}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la mise à jour de la visibilité des cartes:", error);
+            return false;
+        }
+    },
+
+    async setActivityCardsVisibility(sessionId: string, activityId: string, visible: boolean): Promise<boolean> {
+        if (!sessionId || !activityId) {
+            console.error("SessionId ou ActivityId manquant pour la mise à jour de la visibilité des cartes");
+            return false;
+        }
+
+        try {
+            const activityRef = doc(db, 'activities', activityId);
+            await updateDoc(activityRef, {
+                cardsVisible: visible,
+                lastUpdated: serverTimestamp()
+            });
+            console.log(`Visibilité des cartes de l'activité ${activityId} définie à: ${visible}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la mise à jour de la visibilité des cartes de l'activité:", error);
+            return false;
+        }
+    },
+
     async setCurrentActivity(sessionId: string, activityId: string | null): Promise<boolean> {
         if (!sessionId) {
             console.error("❌ SessionId missing for setting current activity");
@@ -749,5 +789,202 @@ export const cardsService = {
             console.error("Erreur lors de la mise à jour de la carte:", error);
             throw error;
         }
-    }
+    },
+
+    // Basculer la visibilité d'une carte individuelle
+    async toggleCardVisibility(cardId: string, isVisible: boolean): Promise<boolean> {
+        if (!cardId) {
+            console.error("CardId manquant pour basculer la visibilité");
+            return false;
+        }
+
+        try {
+            const cardRef = doc(db, 'cards', cardId);
+            await updateDoc(cardRef, {
+                isVisible: isVisible,
+                lastUpdated: serverTimestamp()
+            });
+            console.log(`Visibilité de la carte ${cardId} définie à: ${isVisible}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la modification de la visibilité de la carte:", error);
+            return false;
+        }
+    },
+
+    // Basculer la visibilité de toutes les cartes d'une colonne
+    async toggleColumnCardsVisibility(sessionId: string, columnType: ColumnType, isVisible: boolean): Promise<boolean> {
+        if (!sessionId || !columnType) {
+            console.error("SessionId ou columnType manquant pour basculer la visibilité de la colonne");
+            return false;
+        }
+
+        try {
+            const q = query(
+                collection(db, 'cards'),
+                where('sessionId', '==', sessionId),
+                where('type', '==', columnType)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const updatePromises = querySnapshot.docs.map(cardDoc =>
+                updateDoc(cardDoc.ref, {
+                    isVisible: isVisible,
+                    lastUpdated: serverTimestamp()
+                })
+            );
+
+            await Promise.all(updatePromises);
+            console.log(`Visibilité de ${querySnapshot.docs.length} cartes de la colonne ${columnType} définie à: ${isVisible}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la modification de la visibilité des cartes de la colonne:", error);
+            return false;
+        }
+    },
+
+    // Révéler toutes les cartes d'une session
+    async revealAllCards(sessionId: string): Promise<boolean> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour révéler toutes les cartes");
+            return false;
+        }
+
+        try {
+            const q = query(
+                collection(db, 'cards'),
+                where('sessionId', '==', sessionId)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const updatePromises = querySnapshot.docs.map(cardDoc =>
+                updateDoc(cardDoc.ref, {
+                    isVisible: true,
+                    lastUpdated: serverTimestamp()
+                })
+            );
+
+            await Promise.all(updatePromises);
+            console.log(`${querySnapshot.docs.length} cartes révélées pour la session ${sessionId}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de la révélation de toutes les cartes:", error);
+            return false;
+        }
+    },
+
+    // Masquer toutes les cartes d'une session
+    async hideAllCards(sessionId: string): Promise<boolean> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour masquer toutes les cartes");
+            return false;
+        }
+
+        try {
+            const q = query(
+                collection(db, 'cards'),
+                where('sessionId', '==', sessionId)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const updatePromises = querySnapshot.docs.map(cardDoc =>
+                updateDoc(cardDoc.ref, {
+                    isVisible: false,
+                    lastUpdated: serverTimestamp()
+                })
+            );
+
+            await Promise.all(updatePromises);
+            console.log(`${querySnapshot.docs.length} cartes masquées pour la session ${sessionId}`);
+            return true;
+        } catch (error) {
+            console.error("Erreur lors du masquage de toutes les cartes:", error);
+            return false;
+        }
+    },
+
+    // Récupérer les cartes avec filtrage par visibilité
+    async getCardsBySessionWithVisibility(sessionId: string, isAdmin?: boolean): Promise<Card[]> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour la récupération des cartes");
+            return [];
+        }
+
+        try {
+            let q;
+
+            if (isAdmin === true) {
+                // Admin voit toutes les cartes
+                q = query(
+                    collection(db, 'cards'),
+                    where('sessionId', '==', sessionId),
+                    orderBy('createdAt', 'asc')
+                );
+            } else {
+                // Participants ne voient que les cartes visibles
+                q = query(
+                    collection(db, 'cards'),
+                    where('sessionId', '==', sessionId),
+                    where('isVisible', '==', true),
+                    orderBy('createdAt', 'asc')
+                );
+            }
+
+            const querySnapshot = await getDocs(q);
+            const cards = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+
+                let createdAt;
+                if (data.createdAt instanceof Timestamp) {
+                    createdAt = data.createdAt.toDate();
+                } else if (data.createdAt) {
+                    createdAt = new Date(data.createdAt);
+                } else {
+                    createdAt = new Date();
+                }
+
+                return {
+                    id: doc.id,
+                    sessionId: data.sessionId,
+                    text: data.text || "",
+                    author: data.author || "Anonyme",
+                    type: data.type,
+                    createdAt: createdAt,
+                    isVisible: data.isVisible !== false, // Par défaut visible si non spécifié
+                };
+            });
+
+            console.log(`Cartes récupérées avec filtrage visibilité: ${cards.length} (admin: ${isAdmin})`);
+            return cards;
+        } catch (error) {
+            console.error("Erreur lors de la récupération des cartes avec visibilité:", error);
+            return [];
+        }
+    },
+
+    // Modifier l'ajout de carte pour prendre en compte la visibilité par défaut
+    async addCardWithVisibility(sessionId: string, text: string, type: ColumnType, author?: string, isVisible: boolean = false): Promise<string> {
+        if (!sessionId) {
+            console.error("SessionId manquant pour l'ajout de carte");
+            throw new Error("SessionId requis pour ajouter une carte");
+        }
+
+        const cardData = {
+            sessionId,
+            text: text.trim(),
+            type,
+            author: author?.trim() || 'Anonyme',
+            createdAt: serverTimestamp(),
+            isVisible: isVisible // Par défaut masquée
+        };
+
+        try {
+            const docRef = await addDoc(collection(db, 'cards'), cardData);
+            console.log("Carte ajoutée avec visibilité:", docRef.id, "visible:", isVisible);
+            return docRef.id;
+        } catch (error) {
+            console.error("Erreur lors de l'ajout de la carte avec visibilité:", error);
+            throw error;
+        }
+    },
 };

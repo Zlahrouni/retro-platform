@@ -84,6 +84,7 @@ export interface Session {
     endTime?: Date;
     participants?: Participant[];
     currentActivityId?: string;
+    cardsVisible?: boolean;
 }
 export interface Activity {
     id: string;
@@ -94,9 +95,10 @@ export interface Activity {
     createdAt: Date;
     startedAt?: Date;
     completedAt?: Date;
-    visibleToAll: boolean; // Indique si l'activité est visible pour tous les participants
-    launched: boolean; // Indique si l'activité a été lancée par l'admin
-    addedBy: string; // Nom d'utilisateur de l'admin qui a ajouté l'activité
+    visibleToAll: boolean;
+    launched: boolean;
+    addedBy: string;
+    cardsVisible?: boolean;
 }
 
 export interface Card {
@@ -107,6 +109,7 @@ export interface Card {
     author?: string;
     type: ColumnType;
     createdAt: Date;
+    isVisible?: boolean;
 }
 
 // Mappage des colonnes par type d'activité

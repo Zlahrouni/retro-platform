@@ -1,9 +1,11 @@
-// src/components/InteractiveBoard.tsx
+// src/components/InteractiveBoard.tsx - Mise à jour avec visibilité des cartes
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityType, ColumnType, ACTIVITY_COLUMNS, Card } from '../types/types';
 import CardComponent from './cards/CardComponent';
 import AddCardForm from './cards/AddCardForm';
+import CardVisibilityControls from './session/CardVisibilityControls';
 import {QuestionFunExpress} from "./activities/icebreakers";
 import Button from "./commons/Button";
 
@@ -11,23 +13,27 @@ interface ColumnProps {
     title: string;
     columnType: ColumnType;
     cards: Card[];
+    allCards: Card[]; // Toutes les cartes (pour l'admin)
     onAddCard: (text: string, columnType: ColumnType) => Promise<void>;
     isReadOnly: boolean;
     isAdmin: boolean;
     sessionId: string;
     selectedAuthor?: string | null;
+    onToggleCardVisibility?: (cardId: string, isVisible: boolean) => Promise<void>;
 }
 
-// Individual Column Component
+// Individual Column Component with card visibility
 const Column: React.FC<ColumnProps> = ({
                                            title,
                                            columnType,
                                            cards,
+                                           allCards,
                                            onAddCard,
                                            isReadOnly,
-                                           selectedAuthor
+                                           isAdmin,
+                                           selectedAuthor,
+                                           onToggleCardVisibility
                                        }) => {
-    // Animation delay based on column index (for staggered entrance)
     const getAnimationDelay = () => {
         const columnIndex = {
             // Mad Sad Glad
@@ -51,6 +57,11 @@ const Column: React.FC<ColumnProps> = ({
     const filteredCards = selectedAuthor
         ? cards.filter(card => card.author === selectedAuthor)
         : cards;
+
+    // Pour l'admin, montrer également les cartes masquées avec un style différent
+    const allFilteredCards = selectedAuthor
+        ? allCards.filter(card => card.author === selectedAuthor && card.type === columnType)
+        : allCards.filter(card => card.type === columnType);
 
     const handleAddCardClick = () => {
         setIsAddingCard(true);
@@ -85,6 +96,16 @@ const Column: React.FC<ColumnProps> = ({
         // Fonctionnalité drag and drop sera implémentée ultérieurement
     };
 
+    const handleToggleCardVisibility = async (cardId: string, currentVisibility: boolean) => {
+        if (onToggleCardVisibility) {
+            await onToggleCardVisibility(cardId, !currentVisibility);
+        }
+    };
+
+    const displayCards = isAdmin ? allFilteredCards : filteredCards;
+    const visibleCount = filteredCards.length;
+    const totalCount = allFilteredCards.length;
+
     return (
         <div
             className={`flex flex-col h-full bg-gray-50 rounded-lg shadow-md border overflow-hidden opacity-0 animate-fadeIn ${
@@ -102,27 +123,80 @@ const Column: React.FC<ColumnProps> = ({
             <div className={`p-3 font-semibold text-center text-white ${getColumnHeaderColor(columnType)}`}>
                 <h3 className="truncate">{title}</h3>
                 <div className="text-xs opacity-80 mt-0.5">
-                    {filteredCards.length} {filteredCards.length === 1 ? t('general.card') : t('general.cards')}
+                    {isAdmin && totalCount !== visibleCount ? (
+                        <span>
+                            {visibleCount} / {totalCount} {totalCount === 1 ? t('general.card') : t('general.cards')}
+                            <span className="ml-1 text-yellow-200">({totalCount - visibleCount} masquées)</span>
+                        </span>
+                    ) : (
+                        <span>
+                            {visibleCount} {visibleCount === 1 ? t('general.card') : t('general.cards')}
+                        </span>
+                    )}
                     {selectedAuthor && <span className="ml-1">({selectedAuthor})</span>}
                 </div>
             </div>
 
             {/* Cards Container */}
             <div className="flex-grow p-3 overflow-y-auto bg-gray-50 space-y-3 min-h-[200px] max-h-[600px]">
-                {filteredCards.length > 0 ? (
-                    filteredCards.map((card, index) => (
-                        <div
-                            className="transform transition-transform hover:-translate-y-1 animate-cardEntrance"
-                            key={card.id}
-                            style={{
-                                animationDelay: `${index * 100}ms`,
-                                animationFillMode: 'backwards'
-                            }}
-                            draggable={!isReadOnly}
-                        >
-                            <CardComponent card={card} />
-                        </div>
-                    ))
+                {displayCards.length > 0 ? (
+                    displayCards.map((card, index) => {
+                        const isCardVisible = card.isVisible !== false;
+                        return (
+                            <div
+                                className={`transform transition-all hover:-translate-y-1 animate-cardEntrance ${
+                                    isAdmin && !isCardVisible ? 'opacity-50 border-2 border-dashed border-gray-400' : ''
+                                }`}
+                                key={card.id}
+                                style={{
+                                    animationDelay: `${index * 100}ms`,
+                                    animationFillMode: 'backwards'
+                                }}
+                                draggable={!isReadOnly}
+                            >
+                                <div className="relative">
+                                    <CardComponent card={card} />
+
+                                    {/* Overlay pour cartes masquées (admin seulement) */}
+                                    {isAdmin && !isCardVisible && (
+                                        <div className="absolute inset-0 bg-gray-200 bg-opacity-80 flex items-center justify-center rounded-md">
+                                            <div className="text-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                                <p className="text-xs text-gray-600 font-medium">Masquée</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Contrôles de visibilité (admin seulement) */}
+                                    {isAdmin && onToggleCardVisibility && (
+                                        <div className="absolute top-1 right-1">
+                                            <button
+                                                onClick={() => handleToggleCardVisibility(card.id, isCardVisible)}
+                                                className={`p-1 rounded-full text-xs transition-colors ${
+                                                    isCardVisible
+                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                }`}
+                                                title={isCardVisible ? 'Masquer cette carte' : 'Révéler cette carte'}
+                                            >
+                                                {isCardVisible ? (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400 p-4 border-2 border-dashed border-gray-200 rounded-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -197,19 +271,28 @@ const getColumnHeaderColor = (columnType: ColumnType): string => {
 interface BoardProps {
     activityType: ActivityType | 'iceBreaker';
     cards: Card[];
+    allCards?: Card[]; // Toutes les cartes (pour l'admin)
     onAddCard: (text: string, columnType: ColumnType) => Promise<void>;
     isReadOnly: boolean;
     isAdmin: boolean;
     sessionId?: string;
     isFullscreen?: boolean;
     selectedAuthor?: string | null;
-    activity?: any;  // Pour les détails de l'activité
-    participants?: any[];  // Pour les participants
+    activity?: any;
+    participants?: any[];
+    // Nouvelles props pour la visibilité
+    cardsVisible?: boolean;
+    onToggleCardsVisibility?: (visible: boolean) => Promise<void>;
+    onToggleColumnVisibility?: (columnType: ColumnType, visible: boolean) => Promise<void>;
+    onRevealAllCards?: () => Promise<void>;
+    onHideAllCards?: () => Promise<void>;
+    onToggleCardVisibility?: (cardId: string, isVisible: boolean) => Promise<void>;
 }
 
 const InteractiveBoard: React.FC<BoardProps> = ({
                                                     activityType,
                                                     cards,
+                                                    allCards,
                                                     onAddCard,
                                                     isReadOnly,
                                                     isAdmin,
@@ -217,23 +300,33 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                                     isFullscreen = false,
                                                     selectedAuthor,
                                                     activity,
-                                                    participants = []
+                                                    participants = [],
+                                                    cardsVisible = true,
+                                                    onToggleCardsVisibility,
+                                                    onToggleColumnVisibility,
+                                                    onRevealAllCards,
+                                                    onHideAllCards,
+                                                    onToggleCardVisibility
                                                 }) => {
     const { t } = useTranslation();
     const [filteredCards, setFilteredCards] = useState<Record<string, Card[]>>({});
+    const [allFilteredCards, setAllFilteredCards] = useState<Record<string, Card[]>>({});
     const [animateBoard, setAnimateBoard] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [uniqueAuthors, setUniqueAuthors] = useState<string[]>([]);
     const [filterAuthor, setFilterAuthor] = useState<string | null>(selectedAuthor || null);
 
+    // Utiliser allCards si fourni, sinon cards
+    const cardsToUse = allCards || cards;
+
     // Extraire les auteurs uniques des cartes
     useEffect(() => {
-        if (cards && cards.length > 0) {
-            const authorsSet = new Set(cards.map(card => card.author));
+        if (cardsToUse && cardsToUse.length > 0) {
+            const authorsSet = new Set(cardsToUse.map(card => card.author));
             const authors = Array.from(authorsSet).filter(Boolean) as string[];
             setUniqueAuthors(authors);
         }
-    }, [cards]);
+    }, [cardsToUse]);
 
     // Mise à jour du filtre quand selectedAuthor change (prop externe)
     useEffect(() => {
@@ -241,7 +334,6 @@ const InteractiveBoard: React.FC<BoardProps> = ({
     }, [selectedAuthor]);
 
     // Spécifique à l'ice breaker
-    // Détecter le type d'ice breaker via activity.iceBreakerType
     const iceBreakerType = activity?.iceBreakerType || null;
 
     // Log activity information when component mounts
@@ -262,25 +354,36 @@ const InteractiveBoard: React.FC<BoardProps> = ({
         }
 
         try {
-            console.log(`Filtering ${cards.length} cards for ${activityType} activity`);
+            console.log(`Filtering ${cards.length} visible cards and ${cardsToUse.length} total cards for ${activityType} activity`);
 
-            // Group cards by column type
+            // Group visible cards by column type
             const grouped = ACTIVITY_COLUMNS[activityType as ActivityType].reduce((acc, columnType) => {
                 acc[columnType] = cards.filter(card => card.type === columnType);
                 return acc;
             }, {} as Record<string, Card[]>);
 
-            console.log("Cards grouped by column:", Object.keys(grouped).map(col =>
+            // Group all cards by column type (for admin)
+            const allGrouped = ACTIVITY_COLUMNS[activityType as ActivityType].reduce((acc, columnType) => {
+                acc[columnType] = cardsToUse.filter(card => card.type === columnType);
+                return acc;
+            }, {} as Record<string, Card[]>);
+
+            console.log("Visible cards grouped by column:", Object.keys(grouped).map(col =>
                 `${col}: ${grouped[col]?.length || 0} cards`
             ));
 
+            console.log("All cards grouped by column:", Object.keys(allGrouped).map(col =>
+                `${col}: ${allGrouped[col]?.length || 0} cards`
+            ));
+
             setFilteredCards(grouped);
+            setAllFilteredCards(allGrouped);
             setError(null); // Clear any previous errors
         } catch (err) {
             console.error("Error filtering cards:", err);
             setError("Erreur lors du filtrage des cartes");
         }
-    }, [cards, activityType]);
+    }, [cards, cardsToUse, activityType]);
 
     // Add entrance animation for the board
     useEffect(() => {
@@ -367,6 +470,21 @@ const InteractiveBoard: React.FC<BoardProps> = ({
 
     return (
         <div className={`bg-white rounded-lg shadow-lg p-4 mb-6 overflow-hidden transition-all duration-500 ${isFullscreen ? 'h-full' : ''} ${animateBoard ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
+
+            {/* Card Visibility Controls pour admin */}
+            {isAdmin && onToggleCardsVisibility && onToggleColumnVisibility && onRevealAllCards && onHideAllCards && (
+                <CardVisibilityControls
+                    isAdmin={isAdmin}
+                    cardsVisible={cardsVisible}
+                    onToggleGlobalVisibility={onToggleCardsVisibility}
+                    onToggleColumnVisibility={onToggleColumnVisibility}
+                    onRevealAllCards={onRevealAllCards}
+                    onHideAllCards={onHideAllCards}
+                    columns={columns}
+                    sessionId={sessionId}
+                />
+            )}
+
             {/* Board Header */}
             <div className="mb-6 pb-4 border-b border-gray-200">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
@@ -375,6 +493,11 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                             <span className="mr-2">{t(`activities.types.${activityType}`)}</span>
                             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
                                 {cards.length} {cards.length === 1 ? t('general.card') : t('general.cards')}
+                                {isAdmin && cardsToUse.length !== cards.length && (
+                                    <span className="ml-1">
+                                        / {cardsToUse.length} total
+                                    </span>
+                                )}
                             </span>
                         </h2>
 
@@ -448,11 +571,13 @@ const InteractiveBoard: React.FC<BoardProps> = ({
                                 title={t(`activities.columns.${activityType}.${columnType}`)}
                                 columnType={columnType}
                                 cards={filteredCards[columnType] || []}
+                                allCards={allFilteredCards[columnType] || []}
                                 onAddCard={onAddCard}
                                 isReadOnly={isReadOnly}
                                 isAdmin={isAdmin}
                                 sessionId={sessionId}
                                 selectedAuthor={filterAuthor}
+                                onToggleCardVisibility={onToggleCardVisibility}
                             />
                         </div>
                     ))

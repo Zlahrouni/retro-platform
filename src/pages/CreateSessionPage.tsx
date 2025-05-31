@@ -1,9 +1,10 @@
+// src/pages/CreateSessionPage.tsx - Import mis à jour
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ActivitySelector from '../components/activities/ActivitySelector';
 import { ActivityType } from '../types/types';
-import { useCreateSession } from '../hooks/useSession';
+import { useCreateSession } from '../hooks/useCreateSession'; // Import mis à jour
 import { userService } from '../services/userService';
 import UserNameModal from '../components/user/UserNameModal';
 
