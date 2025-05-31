@@ -13,6 +13,8 @@ import Button from "./components/commons/Button";
 import AdminPage from './pages/AdminPage';
 import ActivityPage from './pages/ActivityPage';
 import AdminAccessor from "./components/commons/AdminAccessor";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   // @ts-ignore
@@ -58,6 +60,7 @@ function App() {
                 &copy; {new Date().getFullYear()} - {t('general.appName')} by <a href="https://ziadlahrouni.com" target="_blank" rel="noreferrer noopener">Ziad Lahrouni (ziadlahrouni.com)</a>
               </div>
             </footer>
+            <ToastContainer position="top-right" autoClose={5000} />
           </div>
         </BrowserRouter>
       </ErrorBoundary>

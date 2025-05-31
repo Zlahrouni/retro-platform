@@ -1,5 +1,5 @@
 // src/pages/ActivityPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {useParams, useNavigate, useLocation} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '../hooks/useSession';
@@ -11,6 +11,9 @@ import SessionControls from '../components/session/SessionControls';
 import ParticipantsList from '../components/session/ParticipantsList';
 import SessionStatusBanner from '../components/session/SessionStatusBanner';
 import InteractiveBoard from '../components/InteractiveBoard';
+import Button from '../components/commons/Button';
+import {toast} from "react-toastify";
+import ConfirmationModal from "../components/commons/ConfirmationModal";
 
 const ActivityPage: React.FC = () => {
     const { t } = useTranslation();
@@ -30,7 +33,13 @@ const ActivityPage: React.FC = () => {
     const fromLaunch = location.state?.fromLaunch;
     const bypassCheck = location.state?.bypassCheck;
 
+    const [showCompleteActivityModal, setShowCompleteActivityModal] = useState(false);
+    const [isCompletingActivity, setIsCompletingActivity] = useState(false);
+    const [showNavigationModal, setShowNavigationModal] = useState(false);
 
+    const openCompleteActivityModal = useCallback(() => {
+        setShowCompleteActivityModal(true);
+    }, []);
     // Get session data
     const {
         session,
@@ -235,30 +244,48 @@ const ActivityPage: React.FC = () => {
     };
 
     // Complete activity function
-    const handleCompleteActivity = async () => {
-        if (!activityId || !isSessionCreator) return;
+    const handleCompleteActivity = useCallback(async () => {
+        if (!isSessionCreator || !session?.currentActivityId) return;
+
+        setIsCompletingActivity(true);
 
         try {
-            console.log(`Completing activity ${activityId}`);
+            console.log(`Completing activity ${session.currentActivityId}`);
 
-            // Step 1: Complete the activity in Firebase
-            const success = await completeActivity(activityId);
+            // Terminer l'activité
+            const success = await completeActivity(session.currentActivityId);
 
             if (success) {
-                console.log("Activity completed successfully");
-
-                // Step 2: Reset currentActivityId in the session
+                // Réinitialiser currentActivityId dans la session
                 await setSessionCurrentActivity(null);
+                console.log("Activity completed and removed from session");
 
-                // Step 3: Redirect to session page
-                console.log("Redirecting to session page");
-                navigate(`/session/${sessionId}`);
+                // CHANGEMENT: Ne plus rediriger automatiquement
+                // Afficher un message de succès à la place
+                toast.success("Activité terminée avec succès");
+                setShowCompleteActivityModal(false);
+
+                // Remplacer la modale de navigation par une nouvelle modale de retour
+                setShowNavigationModal(true);
             } else {
                 console.error("Failed to complete activity");
+                toast.error("Erreur lors de la complétion de l'activité");
             }
-        } catch (error) {
-            console.error("Error completing activity:", error);
+        } catch (err) {
+            console.error("Error completing activity:", err);
+            toast.error("Erreur lors de la complétion de l'activité");
+        } finally {
+            setIsCompletingActivity(false);
         }
+    }, [isSessionCreator, session?.currentActivityId, completeActivity, setSessionCurrentActivity]);
+
+    const handleReturnToSession = () => {
+        setShowNavigationModal(false);
+        navigate(`/session/${sessionId}`);
+    };
+
+    const handleStayOnActivity = () => {
+        setShowNavigationModal(false);
     };
 
     // Share link function
@@ -343,15 +370,37 @@ const ActivityPage: React.FC = () => {
 
                     {/* Complete activity button (admin only) */}
                     {isSessionCreator && (
-                        <button
-                            onClick={handleCompleteActivity}
-                            className="py-2 px-4 bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            {t('activities.completeActivity')}
-                        </button>
+                        <div className="flex space-x-2">
+                            <Button
+                                variant="secondary"
+                                onClick={() => navigate(`/session/${sessionId}`)}
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                    </svg>
+                                }
+                                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            >
+                                Retour à la session
+                            </Button>
+
+                            {/* Bouton Terminer désactivé temporairement pour les admins */}
+                            {isSessionCreator && (
+                                <Button
+                                    variant="success"
+                                    onClick={openCompleteActivityModal}
+                                    icon={
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    }
+                                    className="p-2 opacity-50"
+                                    disabled={true} // Temporairement désactivé
+                                >
+                                    {t('activities.completeActivity')}
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
@@ -382,6 +431,21 @@ const ActivityPage: React.FC = () => {
                     {t('session.copied')}
                 </div>
             )}
+
+            {showCompleteActivityModal && (
+                <ConfirmationModal
+                    isOpen={showCompleteActivityModal}
+                    title="Terminer l'activité"
+                    message="Êtes-vous sûr de vouloir terminer cette activité ? L'activité sera marquée comme terminée pour tous les participants."
+                    confirmText="Terminer l'activité"
+                    cancelText="Annuler"
+                    onConfirm={handleCompleteActivity}
+                    onCancel={() => setShowCompleteActivityModal(false)}
+                    type="warning"
+                    isLoading={isCompletingActivity}
+                />
+            )}
+
         </div>
     );
 };

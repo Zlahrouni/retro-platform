@@ -21,6 +21,7 @@ import ParticipantCircles from "../components/session/ParticipantCircles";
 import ConfirmationModal from '../components/commons/ConfirmationModal';
 import {sessionsService} from "../services/firebaseService";
 import Button from "../components/commons/Button";
+import {toast} from "react-toastify";
 
 
 const SessionPage: React.FC = () => {
@@ -304,21 +305,32 @@ const SessionPage: React.FC = () => {
 
                 if (updateSuccess) {
                     console.log(`✅ Current activity updated successfully in Firebase`);
+
+                    // CHANGEMENT: Ne plus rediriger vers la page d'activité
+                    // Ouvrir une modale de confirmation de lancement à la place
+                    setCurrentActivity(activityToLaunch);
+
+                    // Afficher une notification
+                    toast.success("Activité lancée avec succès ! Les participants peuvent maintenant y participer.");
+
+                    // Afficher la modale pour demander si l'admin veut rejoindre maintenant
+                    setShowLaunchSuccessModal(true);
                 } else {
                     console.error("❌ Error: Failed to update current activity in Firebase");
+                    toast.error("Erreur lors de la définition de l'activité courante");
                 }
             } else {
                 console.error("❌ Error: Failed to launch activity");
-                alert("Error launching activity. Please try again.");
+                toast.error("Erreur lors du lancement de l'activité. Veuillez réessayer.");
             }
         } catch (err) {
             console.error("❌ Error launching activity:", err);
-            alert("An error occurred while launching the activity.");
+            toast.error("Une erreur est survenue lors du lancement de l'activité.");
         } finally {
             setIsLaunching(false);
         }
     }, [isSessionCreator, sessionId, activities, launchActivity, setSessionCurrentActivity]);
-
+    const [showLaunchSuccessModal, setShowLaunchSuccessModal] = useState(false);
     // Fonction pour terminer une activité (remplace la redirection)
     const handleCompleteActivity = useCallback(async () => {
         if (!isSessionCreator || !session?.currentActivityId) return;
@@ -370,6 +382,16 @@ const SessionPage: React.FC = () => {
         // Réinitialiser la sélection d'utilisateur lors du changement de mode
         setSelectedUser(null);
     };
+    const handleJoinLaunchedActivity = useCallback(() => {
+        setShowLaunchSuccessModal(false);
+        if (currentActivity) {
+            navigate(`/session/${sessionId}/activity/${currentActivity.id}`);
+        }
+    }, [currentActivity, navigate, sessionId]);
+
+    const handleStayOnSessionPage = useCallback(() => {
+        setShowLaunchSuccessModal(false);
+    }, []);
 
     // Sélectionner un utilisateur pour le filtrage
     const handleSelectUser = (username: string | null) => {
@@ -441,6 +463,68 @@ const SessionPage: React.FC = () => {
                     </div>
                 )}
             </>
+        );
+    };
+
+    const getActivityName = (activity: ActivityData) => {
+        if (!activity) return '';
+
+        if (activity.type === 'iceBreaker') {
+            if (activity.iceBreakerType === 'funQuestion') {
+                return t('activities.iceBreakerTypes.funQuestion');
+            }
+            return t('activities.iceBreaker');
+        }
+
+        return t(`activities.types.${activity.type}`);
+    };
+
+    const renderCurrentActivityInfo = () => {
+        if (!currentActivity) return null;
+
+        return (
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                            <span className="mr-2">Activité en cours : {getActivityName(currentActivity)}</span>
+                            <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">
+                            Active
+                        </span>
+                        </h3>
+                        <p className="text-gray-600 mt-1">
+                            Lancée par {currentActivity.addedBy}
+                        </p>
+                    </div>
+
+                    <div className="mt-4 md:mt-0 flex space-x-2">
+                        <Button
+                            variant="primary"
+                            onClick={() => navigate(`/session/${sessionId}/activity/${currentActivity.id}`)}
+                            icon={
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            }
+                        >
+                            Rejoindre l'activité
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                    <div className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p>
+                            Vous pouvez rejoindre l'activité en cliquant sur le bouton ci-dessus, et revenir à cette page à tout moment.
+                            Tous les participants peuvent naviguer librement entre la session et l'activité.
+                        </p>
+                    </div>
+                </div>
+            </div>
         );
     };
 
