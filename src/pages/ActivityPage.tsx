@@ -541,7 +541,7 @@ const ActivityPage: React.FC = () => {
                 activity={currentActivity}
                 participants={session?.participants || []}
                 // Nouvelles props pour la visibilité
-                cardsVisible={session?.cardsVisible}
+                cardsVisible={session?.cardsVisible || false}
                 onToggleCardsVisibility={handleToggleGlobalVisibility}
                 onToggleColumnVisibility={handleToggleColumnVisibility}
                 onRevealAllCards={handleRevealAllCards}

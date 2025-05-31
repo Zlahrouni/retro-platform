@@ -472,14 +472,14 @@ const InteractiveBoard: React.FC<BoardProps> = ({
         <div className={`bg-white rounded-lg shadow-lg p-4 mb-6 overflow-hidden transition-all duration-500 ${isFullscreen ? 'h-full' : ''} ${animateBoard ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
 
             {/* Card Visibility Controls pour admin */}
-            {isAdmin && onToggleCardsVisibility && onToggleColumnVisibility && onRevealAllCards && onHideAllCards && (
+            {isAdmin && (activityType as string) !== 'iceBreaker' && columns.length > 0 && (
                 <CardVisibilityControls
                     isAdmin={isAdmin}
-                    cardsVisible={cardsVisible}
-                    onToggleGlobalVisibility={onToggleCardsVisibility}
-                    onToggleColumnVisibility={onToggleColumnVisibility}
-                    onRevealAllCards={onRevealAllCards}
-                    onHideAllCards={onHideAllCards}
+                    cardsVisible={cardsVisible || false}
+                    onToggleGlobalVisibility={onToggleCardsVisibility || (async () => {})}
+                    onToggleColumnVisibility={onToggleColumnVisibility || (async () => {})}
+                    onRevealAllCards={onRevealAllCards || (async () => {})}
+                    onHideAllCards={onHideAllCards || (async () => {})}
                     columns={columns}
                     sessionId={sessionId}
                 />
